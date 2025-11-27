@@ -1,0 +1,172 @@
+<div class="drawer lg:drawer-open">
+  <input id="app-drawer" type="checkbox" class="drawer-toggle" />
+  <div class="drawer-content flex flex-col">
+    <!-- Navbar -->
+    <header class="navbar bg-base-100 w-full border-b border-base-300">
+      <div class="flex-none lg:hidden">
+        <label for="app-drawer" class="btn btn-square btn-ghost">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            class="inline-block w-6 h-6 stroke-current"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6h16M4 12h16M4 18h16"
+            >
+            </path>
+          </svg>
+        </label>
+      </div>
+      <div class="flex-1 px-4">
+        <h1 class="text-xl font-bold">levanngoc.com</h1>
+      </div>
+      <div class="flex-none">
+        <%= if @current_scope do %>
+          <div class="dropdown dropdown-end">
+            <div tabindex="0" role="button" class="btn btn-ghost">
+              <%= @current_scope.user.email %>
+            </div>
+            <ul
+              tabindex="0"
+              class="dropdown-content menu bg-base-100 rounded-box z-[1] w-64 p-2 shadow"
+            >
+              <%= if @current_scope.user.billing_price do %>
+                <li class="menu-title px-4 py-2">
+                  <div class="flex flex-col gap-1">
+                    <span class="text-xs text-base-content/60">Gói hiện tại</span>
+                    <span class="text-sm font-semibold text-primary">
+                      <%= @current_scope.user.billing_price.name %> (<%= Number.Delimit.number_to_delimited(@current_scope.user.token_amount, precision: 0) %> tokens)
+                    </span>
+                  </div>
+                </li>
+                <hr class="my-1" />
+              <% end %>
+              <li>
+                <.link href={~p"/users/settings"}>Cài đặt</.link>
+              </li>
+              <li>
+                <.link href={~p"/users/billing"}>Gói & Thanh toán</.link>
+              </li>
+              <%= if Levanngoc.Accounts.User.superuser?(@current_scope.user) do %>
+                <li>
+                  <.link href={~p"/admin"}>Quản trị</.link>
+                </li>
+              <% end %>
+              <hr class="my-1" />
+              <li>
+                <.link href={~p"/users/log-out"} method="delete">Đăng xuất</.link>
+              </li>
+            </ul>
+          </div>
+        <% else %>
+          <.link href={~p"/users/register"} class="btn btn-primary btn-sm">
+            Đăng ký
+          </.link>
+          <.link href={~p"/users/log-in"} class="btn btn-primary btn-sm">
+            Đăng nhập
+          </.link>
+        <% end %>
+      </div>
+    </header>
+    <!-- Page content -->
+    <main class="flex-1 p-4 lg:p-6">
+      <%= @inner_content %>
+    </main>
+
+    <.flash_group flash={@flash} />
+  </div>
+  <div class="drawer-side">
+    <label for="app-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
+    <aside class="bg-base-200 min-h-full w-60">
+      <div class="sticky top-0">
+        <div class="p-5 border-base-300">
+          <.link href="/" class="flex items-center gap-2 justify-center">
+            <img src={~p"/images/logo.svg"} width="32" />
+          </.link>
+        </div>
+        <ul class="menu w-full">
+          <li>
+            <.link href={~p"/"} class="flex items-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                />
+              </svg>
+              <span>Trang chủ</span>
+            </.link>
+          </li>
+          <li>
+            <.link href={~p"/check_url_index"} class="flex items-center gap-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                />
+              </svg>
+              <span>Kiểm tra URL index</span>
+            </.link>
+          </li>
+          <li>
+            <.link href={~p"/check_all_in_title"} class="flex items-center gap-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                />
+              </svg>
+              <span>Kiểm tra All In Title</span>
+            </.link>
+          </li>
+          <li>
+            <.link href={~p"/check_keyword_ranking"} class="flex items-center gap-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
+              </svg>
+              <span>Kiểm tra Keyword Ranking</span>
+            </.link>
+          </li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+</div>
