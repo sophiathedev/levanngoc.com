@@ -70,7 +70,7 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
           # Parse from uploaded file
           uploaded_files =
             consume_uploaded_entries(socket, :file, fn %{path: path}, entry ->
-              parse_file(path, entry.client_type)
+              {:ok, parse_file(path, entry.client_type)}
             end)
 
           List.flatten(uploaded_files)

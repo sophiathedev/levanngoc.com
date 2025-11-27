@@ -74,7 +74,8 @@ defmodule Levanngoc.MixProject do
       {:elixlsx, "~> 0.5.1"},
       {:number, "~> 1.0.5"},
       {:multipart, "~> 0.4"},
-      {:oban, "~> 2.19"}
+      {:oban, "~> 2.19"},
+      {:logger_file_backend, "~> 0.0.14"}
     ]
   end
 
