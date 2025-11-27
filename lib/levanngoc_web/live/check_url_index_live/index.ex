@@ -39,64 +39,61 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
   def handle_event("save", _params, socket) do
     admin_setting = Repo.all(AdminSetting)
 
-    [
-      %AdminSetting{
-        scraping_dog_api_key: scraping_dog_api_key
-      }
-      | _
-    ] = admin_setting
+    case admin_setting do
+      [%AdminSetting{scraping_dog_api_key: scraping_dog_api_key} | _]
+      when is_binary(scraping_dog_api_key) and scraping_dog_api_key != "" ->
+        token_usage_check_url_index =
+          case admin_setting do
+            [%AdminSetting{token_usage_check_url_index: usage} | _] when is_integer(usage) ->
+              usage
 
-    has_api_key = is_binary(scraping_dog_api_key) and scraping_dog_api_key != ""
+            _ ->
+              0
+          end
 
-    if has_api_key do
-      token_usage_check_url_index =
-        case admin_setting do
-          [%AdminSetting{token_usage_check_url_index: usage} | _] when is_integer(usage) -> usage
-          _ -> 0
-        end
+        # Parse URLs immediately to calculate cost
+        is_edit_mode = socket.assigns.is_edit_mode
+        manual_urls = socket.assigns.manual_urls
 
-      # Parse URLs immediately to calculate cost
-      is_edit_mode = socket.assigns.is_edit_mode
-      manual_urls = socket.assigns.manual_urls
+        urls =
+          if is_edit_mode do
+            # Parse manual URLs - split by newlines and filter empty
+            manual_urls
+            |> String.split("\n")
+            |> Enum.map(&String.trim/1)
+            |> Enum.filter(&(&1 != ""))
+          else
+            # Parse from uploaded file
+            uploaded_files =
+              consume_uploaded_entries(socket, :file, fn %{path: path}, entry ->
+                {:ok, parse_file(path, entry.client_type)}
+              end)
 
-      urls =
-        if is_edit_mode do
-          # Parse manual URLs - split by newlines and filter empty
-          manual_urls
-          |> String.split("\n")
-          |> Enum.map(&String.trim/1)
-          |> Enum.filter(&(&1 != ""))
-        else
-          # Parse from uploaded file
-          uploaded_files =
-            consume_uploaded_entries(socket, :file, fn %{path: path}, entry ->
-              {:ok, parse_file(path, entry.client_type)}
-            end)
+            List.flatten(uploaded_files)
+          end
 
-          List.flatten(uploaded_files)
-        end
+        total_urls = length(urls)
+        total_cost = total_urls * token_usage_check_url_index
+        current_token_amount = socket.assigns.current_scope.user.token_amount || 0
+        remaining_tokens = current_token_amount - total_cost
 
-      total_urls = length(urls)
-      total_cost = total_urls * token_usage_check_url_index
-      current_token_amount = socket.assigns.current_scope.user.token_amount || 0
-      remaining_tokens = current_token_amount - total_cost
+        cost_details = %{
+          total_urls: total_urls,
+          token_usage_per_url: token_usage_check_url_index,
+          total_cost: total_cost,
+          current_token_amount: current_token_amount,
+          remaining_tokens: remaining_tokens
+        }
 
-      cost_details = %{
-        total_urls: total_urls,
-        token_usage_per_url: token_usage_check_url_index,
-        total_cost: total_cost,
-        current_token_amount: current_token_amount,
-        remaining_tokens: remaining_tokens
-      }
+        {:noreply,
+         socket
+         |> assign(:cost_details, cost_details)
+         |> assign(:urls_to_process, urls)
+         |> assign(:scraping_dog_api_key, scraping_dog_api_key)
+         |> assign(:show_confirm_modal, true)}
 
-      {:noreply,
-       socket
-       |> assign(:cost_details, cost_details)
-       |> assign(:urls_to_process, urls)
-       |> assign(:scraping_dog_api_key, scraping_dog_api_key)
-       |> assign(:show_confirm_modal, true)}
-    else
-      {:noreply, put_flash(socket, :error, "Cấu hình hệ thống lỗi, vui lòng thử lại sau.")}
+      _ ->
+        {:noreply, put_flash(socket, :error, "Cấu hình hệ thống lỗi, vui lòng thử lại sau.")}
     end
   end
 
