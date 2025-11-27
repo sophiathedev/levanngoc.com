@@ -20,11 +20,11 @@ defmodule Levanngoc.KeywordChecking do
     |> normalize_url()
     |> validate_length(:keyword, max: 500)
     |> validate_length(:website_url, max: 1000)
-    |> validate_format(:website_url, ~r/^https?:\/\/[^\s$.?#].[^\s]*$/i, message: "must be a valid URL")
+    |> validate_format(:website_url, ~r/^(https?:\/\/)?[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}([\/\w.-]*)*$/i, message: "must be a valid URL format")
     |> assoc_constraint(:user)
   end
 
-  # Normalize URL by adding https:// if protocol is missing
+  # Normalize URL by returning as-is (no automatic protocol addition)
   defp normalize_url(changeset) do
     case get_change(changeset, :website_url) do
       nil ->
@@ -41,10 +41,6 @@ defmodule Levanngoc.KeywordChecking do
   end
 
   defp add_protocol_if_missing(url) do
-    if String.match?(url, ~r/^https?:\/\//i) do
-      url
-    else
-      "https://" <> url
-    end
+    url
   end
 end

@@ -40,9 +40,17 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
      |> assign(:editing_keyword, nil)
      |> assign(:form, nil)
      |> assign(:show_create_modal, false)
+     |> assign(:show_confirm_modal, false)
+     |> assign(:cost_details, nil)
+     |> assign(:is_processing, false)
+     |> assign(:timer_text, "00:00:00.0")
+     |> assign(:start_time, nil)
      |> assign(:editing_time, false)
      |> assign(:email_hour, "08")
-     |> assign(:email_minute, "00")}
+     |> assign(:email_minute, "00")
+     |> assign(:show_result_modal, false)
+     |> assign(:result_stats, nil)
+     |> assign(:check_results, [])}
   end
 
   @impl true
@@ -183,6 +191,200 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
      |> assign(:editing_time, false)}
   end
 
+  def handle_event("check_now", _params, socket) do
+    current_user = socket.assigns.current_scope.user
+    total_keywords = socket.assigns.total_entries
+    token_usage_per_check = socket.assigns.token_usage_per_check
+    total_cost = socket.assigns.total_token_usage
+    current_token_amount = current_user.token_amount || 0
+    remaining_tokens = current_token_amount - total_cost
+
+    cost_details = %{
+      total_keywords: total_keywords,
+      token_usage_per_check: token_usage_per_check,
+      total_cost: total_cost,
+      current_token_amount: current_token_amount,
+      remaining_tokens: remaining_tokens
+    }
+
+    {:noreply,
+     socket
+     |> assign(:cost_details, cost_details)
+     |> assign(:show_confirm_modal, true)}
+  end
+
+  def handle_event("confirm_check", _params, socket) do
+    total_cost = socket.assigns.cost_details.total_cost
+    current_user = socket.assigns.current_scope.user
+
+    # Get admin settings for ScrapingDog API key
+    admin_setting = Repo.all(AdminSetting) |> List.first()
+
+    case admin_setting do
+      %AdminSetting{scraping_dog_api_key: api_key} when is_binary(api_key) and api_key != "" ->
+        case Levanngoc.Accounts.deduct_user_tokens(current_user, total_cost) do
+          {:ok, updated_user} ->
+            # Update current_scope with the new user state
+            current_scope = %{socket.assigns.current_scope | user: updated_user}
+
+            # Get all keyword checkings to process
+            keyword_checkings = KeywordCheckings.list_keyword_checkings(current_user.id)
+
+            socket =
+              socket
+              |> assign(:current_scope, current_scope)
+              |> assign(:show_confirm_modal, false)
+              |> assign(:is_processing, true)
+              |> assign(:start_time, DateTime.utc_now())
+              |> assign(:timer_text, "00:00:00.0")
+
+            # Start timer
+            :timer.send_interval(100, self(), :tick)
+
+            # Process keyword rankings in async task
+            pid = self()
+
+            Task.start(fn ->
+              scraping_dog =
+                %Levanngoc.External.ScrapingDog{}
+                |> Levanngoc.External.ScrapingDog.put_apikey(api_key)
+
+              results =
+                keyword_checkings
+                |> Task.async_stream(
+                  fn keyword_checking ->
+                    rank =
+                      Levanngoc.External.ScrapingDog.check_keyword_ranking(
+                        scraping_dog,
+                        keyword_checking.keyword,
+                        keyword_checking.website_url
+                      )
+
+                    %{
+                      keyword: keyword_checking.keyword,
+                      website_url: keyword_checking.website_url,
+                      rank: rank || "Not found"
+                    }
+                  end,
+                  max_concurrency: 10,
+                  timeout: :infinity
+                )
+                |> Enum.map(fn {:ok, result} -> result end)
+
+              send(pid, {:processing_complete, results})
+            end)
+
+            {:noreply, socket}
+
+          {:error, _changeset} ->
+            {:noreply,
+             socket
+             |> assign(:show_confirm_modal, false)
+             |> put_flash(:error, "Có lỗi xảy ra khi trừ token. Vui lòng thử lại.")}
+        end
+
+      _ ->
+        {:noreply,
+         socket
+         |> assign(:show_confirm_modal, false)
+         |> put_flash(:error, "Cấu hình hệ thống lỗi, vui lòng thử lại sau.")}
+    end
+  end
+
+  def handle_event("cancel_check", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_confirm_modal, false)
+     |> assign(:cost_details, nil)}
+  end
+
+  def handle_event("close_result_modal", _params, socket) do
+    {:noreply, assign(socket, :show_result_modal, false)}
+  end
+
+  def handle_event("download", %{"type" => type, "format" => format}, socket) do
+    # Filter results based on type
+    filtered_results =
+      case type do
+        "all" ->
+          socket.assigns.check_results
+
+        "ranked" ->
+          Enum.filter(socket.assigns.check_results, fn r ->
+            r.rank != nil and r.rank != "Not found" and r.rank != "Not Found"
+          end)
+
+        "not_ranked" ->
+          Enum.filter(socket.assigns.check_results, fn r ->
+            r.rank == nil or r.rank == "Not found" or r.rank == "Not Found"
+          end)
+      end
+
+    # Generate file content based on format
+    {content, filename, _content_type} =
+      case format do
+        "xlsx" ->
+          generate_xlsx(filtered_results, type)
+
+        "csv" ->
+          generate_csv(filtered_results, type)
+      end
+
+    {:noreply,
+     push_event(socket, "download-file", %{
+       content: Base.encode64(content),
+       filename: filename
+     })}
+  end
+
+  @impl true
+  def handle_info(:tick, socket) do
+    if socket.assigns.is_processing do
+      now = DateTime.utc_now()
+      diff = DateTime.diff(now, socket.assigns.start_time, :millisecond)
+
+      hours = div(diff, 3600_000)
+      rem_h = rem(diff, 3600_000)
+      minutes = div(rem_h, 60_000)
+      rem_m = rem(rem_h, 60_000)
+      seconds = div(rem_m, 1000)
+      millis = rem(rem_m, 1000)
+      tenth = div(millis, 100)
+
+      timer_text = "#{pad(hours)}:#{pad(minutes)}:#{pad(seconds)}.#{tenth}"
+
+      {:noreply, assign(socket, :timer_text, timer_text)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_info({:processing_complete, results}, socket) do
+    total_keywords = length(results)
+    ranked_count = Enum.count(results, fn r -> r.rank != nil and r.rank != "Not found" end)
+    not_ranked_count = total_keywords - ranked_count
+
+    processing_time = socket.assigns.timer_text
+
+    result_stats = %{
+      total_keywords: total_keywords,
+      ranked_count: ranked_count,
+      not_ranked_count: not_ranked_count,
+      processing_time: processing_time
+    }
+
+    {:noreply,
+     socket
+     |> assign(:is_processing, false)
+     |> assign(:result_stats, result_stats)
+     |> assign(:check_results, results)
+     |> assign(:show_result_modal, true)}
+  end
+
+  defp pad(num) do
+    num |> Integer.to_string() |> String.pad_leading(2, "0")
+  end
+
   # Helper function to generate page range with ellipsis
   defp page_range(current_page, total_pages) do
     cond do
@@ -208,13 +410,73 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
     end
   end
 
+  defp generate_xlsx(results, type) do
+    timestamp = format_timestamp(to_ho_chi_minh_time(DateTime.utc_now()))
+    filename = "keyword_ranking_#{type}_#{timestamp}.xlsx"
+
+    # Create workbook with Elixlsx
+    sheet =
+      results
+      |> Enum.map(fn result ->
+        [result.keyword, result.website_url, result.rank]
+      end)
+      |> then(fn rows -> [["Keyword", "Website URL", "Rank"] | rows] end)
+
+    workbook = %Elixlsx.Workbook{
+      sheets: [
+        %Elixlsx.Sheet{
+          name: "Results",
+          rows: sheet
+        }
+      ]
+    }
+
+    {:ok, {_filename, content}} = Elixlsx.write_to_memory(workbook, filename)
+
+    {content, filename, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
+  end
+
+  defp pad_zero(num) when num < 10, do: "0#{num}"
+  defp pad_zero(num), do: num
+
+  defp to_ho_chi_minh_time(datetime) do
+    case DateTime.shift_zone(datetime, "Asia/Ho_Chi_Minh") do
+      {:ok, converted_datetime} -> converted_datetime
+      # fallback to original if timezone conversion fails
+      {:error, _} -> datetime
+    end
+  end
+
+  defp format_timestamp(datetime) do
+    "#{datetime.year}#{pad_zero(datetime.month)}#{pad_zero(datetime.day)}#{pad_zero(datetime.hour)}#{pad_zero(datetime.minute)}#{pad_zero(datetime.second)}"
+  end
+
+  defp generate_csv(results, type) do
+    timestamp = format_timestamp(to_ho_chi_minh_time(DateTime.utc_now()))
+    filename = "keyword_ranking_#{type}_#{timestamp}.csv"
+
+    # Create CSV content
+    header = "Keyword,Website URL,Rank\n"
+
+    rows =
+      results
+      |> Enum.map(fn result ->
+        "\"#{result.keyword}\",\"#{result.website_url}\",\"#{result.rank}\"\n"
+      end)
+      |> Enum.join()
+
+    content = header <> rows
+
+    {content, filename, "text/csv"}
+  end
+
   @impl true
   def render(assigns) do
     ~H"""
     <div class="w-full h-full px-4 py-4 flex flex-col gap-4">
       <div class="flex justify-between items-center">
         <h1 class="text-3xl font-bold">{@page_title}</h1>
-        <button class="btn btn-primary" phx-click="open_create_modal">
+        <button class="btn btn-primary" phx-click="open_create_modal" disabled={@is_processing}>
           <svg
             xmlns="http://www.w3.org/2000/svg"
             class="h-5 w-5 mr-2"
@@ -298,6 +560,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
                               phx-click="open_edit_modal"
                               phx-value-id={keyword.id}
                               title="Sửa"
+                              disabled={@is_processing}
                             >
                               <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -314,6 +577,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
                               phx-value-id={keyword.id}
                               data-confirm="Bạn có chắc chắn muốn xóa từ khóa này?"
                               title="Xóa"
+                              disabled={@is_processing}
                             >
                               <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -354,7 +618,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
                       class="join-item btn btn-sm"
                       phx-click="change_page"
                       phx-value-page={@page - 1}
-                      disabled={@page == 1}
+                      disabled={@page == 1 or @is_processing}
                     >
                       «
                     </button>
@@ -367,6 +631,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
                           class={"join-item btn btn-sm #{if page_num == @page, do: "btn-active"}"}
                           phx-click="change_page"
                           phx-value-page={page_num}
+                          disabled={@is_processing}
                         >
                           {page_num}
                         </button>
@@ -377,7 +642,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
                       class="join-item btn btn-sm"
                       phx-click="change_page"
                       phx-value-page={@page + 1}
-                      disabled={@page == @total_pages}
+                      disabled={@page == @total_pages or @is_processing}
                     >
                       »
                     </button>
@@ -508,7 +773,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
               </div>
             </div>
             <div class="flex justify-end gap-2 mt-4">
-              <button class="btn btn-secondary btn-md">
+              <button class="btn btn-secondary btn-md" disabled={@is_processing}>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   class="h-5 w-5 mr-1"
@@ -521,20 +786,28 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
                 Gửi qua Email
               </button>
 
-              <button class="btn btn-primary btn-md">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="h-5 w-5 mr-1"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fill-rule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clip-rule="evenodd"
-                  />
-                </svg>
-                Kiểm tra ngay
+              <button
+                class="btn btn-primary btn-md"
+                phx-click="check_now"
+                disabled={@total_entries == 0 or @is_processing}
+              >
+                <%= if @is_processing do %>
+                  {@timer_text}
+                <% else %>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5 mr-1"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fill-rule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      clip-rule="evenodd"
+                    />
+                  </svg>
+                  Kiểm tra ngay
+                <% end %>
               </button>
             </div>
           </div>
@@ -590,6 +863,255 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
             </.form>
           </div>
           <div class="modal-backdrop" phx-click="close_modal"></div>
+        </div>
+      <% end %>
+
+      <%= if @show_confirm_modal and @cost_details do %>
+        <div class="modal modal-open">
+          <div class="modal-box">
+            <h3 class="font-bold text-lg mb-4">Xác nhận sử dụng Token</h3>
+
+            <div class="py-4 space-y-4">
+              <p>Hành động này sẽ tiêu tốn token của bạn. Vui lòng xác nhận trước khi tiếp tục.</p>
+
+              <div class="bg-base-200 p-4 rounded-lg space-y-2">
+                <div class="flex justify-between">
+                  <span>Số lượng từ khóa:</span>
+                  <span class="font-bold">
+                    {number_to_delimited(@cost_details.total_keywords, precision: 0)}
+                  </span>
+                </div>
+                <div class="flex justify-between">
+                  <span>Chi phí mỗi từ khóa:</span>
+                  <span class="font-bold">
+                    {number_to_delimited(@cost_details.token_usage_per_check, precision: 0)} token<%= if @cost_details.token_usage_per_check > 1 do %>
+                      s
+                    <% end %>
+                  </span>
+                </div>
+                <div class="divider my-1"></div>
+                <div class="flex justify-between text-lg">
+                  <span>Tổng chi phí:</span>
+                  <span class="font-bold text-error">
+                    -{number_to_delimited(@cost_details.total_cost, precision: 0)} token
+                  </span>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-center space-x-4 text-lg font-medium">
+                <div class="text-center">
+                  <div class="text-sm opacity-70">Hiện tại</div>
+                  <div>{number_to_delimited(@cost_details.current_token_amount, precision: 0)}</div>
+                </div>
+                <div class="text-2xl">-</div>
+                <div class="text-center">
+                  <div class="text-sm opacity-70">Chi phí</div>
+                  <div class="text-error">
+                    {number_to_delimited(@cost_details.total_cost, precision: 0)}
+                  </div>
+                </div>
+                <div class="text-2xl">=</div>
+                <div class="text-center">
+                  <div class="text-sm opacity-70">Còn lại</div>
+                  <div class={
+                    if @cost_details.remaining_tokens < 0, do: "text-error", else: "text-success"
+                  }>
+                    {number_to_delimited(@cost_details.remaining_tokens, precision: 0)}
+                  </div>
+                </div>
+              </div>
+
+              <%= if @cost_details.remaining_tokens < 0 do %>
+                <div class="alert alert-error">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="stroke-current shrink-0 h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <span>Bạn không đủ token để thực hiện hành động này.</span>
+                </div>
+              <% end %>
+            </div>
+
+            <div class="modal-action">
+              <%= if @cost_details.remaining_tokens < 0 do %>
+                <.link href={~p"/users/billing"} class="btn btn-success">
+                  Tôi muốn nâng cấp gói
+                </.link>
+                <button class="btn btn-primary" phx-click="cancel_check">Đã hiểu!</button>
+              <% else %>
+                <button class="btn" phx-click="cancel_check">Hủy bỏ</button>
+                <button class="btn btn-primary" phx-click="confirm_check">
+                  Xác nhận & Tiếp tục
+                </button>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <%= if @show_result_modal and @result_stats do %>
+        <div class="modal modal-open">
+          <div class="modal-box max-w-2xl">
+            <h3 class="font-bold text-lg mb-4">Kết quả kiểm tra thứ hạng</h3>
+
+            <div class="space-y-4">
+              <div class="flex items-center justify-between p-4 bg-base-200 rounded-lg">
+                <div>
+                  <div class="text-sm opacity-70">Tổng thời gian xử lý</div>
+                  <div class="text-2xl font-bold text-primary">{@result_stats.processing_time}</div>
+                </div>
+              </div>
+
+              <%= if @result_stats.total_keywords > 0 do %>
+                <%= if @result_stats.ranked_count > 0 do %>
+                  <div class="flex items-center justify-between p-4 bg-base-200 rounded-lg">
+                    <div>
+                      <div class="text-sm opacity-70">Có thứ hạng</div>
+                      <div class="text-2xl font-bold text-success">{@result_stats.ranked_count}</div>
+                    </div>
+                    <div class="dropdown dropdown-end">
+                      <label tabindex="0" class="btn btn-ghost btn-sm">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke-width="1.5"
+                          stroke="currentColor"
+                          class="size-6"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
+                          />
+                        </svg>
+                      </label>
+                      <ul
+                        tabindex="0"
+                        class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52"
+                      >
+                        <li>
+                          <button phx-click="download" phx-value-type="ranked" phx-value-format="xlsx">
+                            Tải xuống (.xlsx)
+                          </button>
+                        </li>
+                        <li>
+                          <button phx-click="download" phx-value-type="ranked" phx-value-format="csv">
+                            Tải xuống (.csv)
+                          </button>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                <% end %>
+
+                <%= if @result_stats.not_ranked_count > 0 do %>
+                  <div class="flex items-center justify-between p-4 bg-base-200 rounded-lg">
+                    <div>
+                      <div class="text-sm opacity-70">Không tìm thấy thứ hạng</div>
+                      <div class="text-2xl font-bold text-error">
+                        {@result_stats.not_ranked_count}
+                      </div>
+                    </div>
+                    <div class="dropdown dropdown-end">
+                      <label tabindex="0" class="btn btn-ghost btn-sm">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke-width="1.5"
+                          stroke="currentColor"
+                          class="size-6"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
+                          />
+                        </svg>
+                      </label>
+                      <ul
+                        tabindex="0"
+                        class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52"
+                      >
+                        <li>
+                          <button
+                            phx-click="download"
+                            phx-value-type="not_ranked"
+                            phx-value-format="xlsx"
+                          >
+                            Tải xuống (.xlsx)
+                          </button>
+                        </li>
+                        <li>
+                          <button
+                            phx-click="download"
+                            phx-value-type="not_ranked"
+                            phx-value-format="csv"
+                          >
+                            Tải xuống (.csv)
+                          </button>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                <% end %>
+
+                <div class="flex items-center justify-between p-4 bg-base-200 rounded-lg">
+                  <div>
+                    <div class="text-sm opacity-70">Tất cả kết quả</div>
+                    <div class="text-2xl font-bold">{@result_stats.total_keywords}</div>
+                  </div>
+                  <div class="dropdown dropdown-end">
+                    <label tabindex="0" class="btn btn-ghost btn-sm">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke-width="1.5"
+                        stroke="currentColor"
+                        class="size-6"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
+                        />
+                      </svg>
+                    </label>
+                    <ul
+                      tabindex="0"
+                      class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52"
+                    >
+                      <li>
+                        <button phx-click="download" phx-value-type="all" phx-value-format="xlsx">
+                          Tải xuống (.xlsx)
+                        </button>
+                      </li>
+                      <li>
+                        <button phx-click="download" phx-value-type="all" phx-value-format="csv">
+                          Tải xuống (.csv)
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+
+            <div class="modal-action">
+              <button class="btn btn-primary" phx-click="close_result_modal">Đóng</button>
+            </div>
+          </div>
         </div>
       <% end %>
     </div>
