@@ -5,7 +5,8 @@ defmodule Levanngoc.External.Sepay do
         order_amount: order_amount,
         order_description: order_description,
         order_invoice_number: invoice_number,
-        customer_id: customer_id
+        customer_id: customer_id,
+        success_url: success_url
       }) do
     params = %{
       "merchant" => merchant_id,
@@ -14,7 +15,8 @@ defmodule Levanngoc.External.Sepay do
       "currency" => "VND",
       "order_invoice_number" => invoice_number,
       "order_description" => order_description,
-      "customer_id" => customer_id
+      "customer_id" => customer_id,
+      "success_url" => success_url
     }
 
     keys = [
@@ -24,7 +26,8 @@ defmodule Levanngoc.External.Sepay do
       "currency",
       "order_invoice_number",
       "order_description",
-      "customer_id"
+      "customer_id",
+      "success_url"
     ]
 
     signature_string =

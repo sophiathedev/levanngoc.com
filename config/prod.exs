@@ -7,6 +7,9 @@ import Config
 # before starting your production server.
 config :levanngoc, LevanngocWeb.Endpoint, cache_static_manifest: "priv/static/cache_manifest.json"
 
+# Override success_url for production (should be set via runtime config or environment variable)
+# config :levanngoc, success_url: "https://yourdomain.com/user/billing"
+
 # Configures Swoosh API Client
 config :swoosh, api_client: Swoosh.ApiClient.Req
 

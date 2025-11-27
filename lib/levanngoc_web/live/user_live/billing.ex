@@ -21,6 +21,7 @@ defmodule LevanngocWeb.UserLive.Billing do
       |> assign(:selected_plan, nil)
       |> assign(:months, 1)
       |> assign(:sepay_params, nil)
+      |> assign(:warning_plan, nil)
 
     {:ok, socket}
   end
@@ -28,13 +29,74 @@ defmodule LevanngocWeb.UserLive.Billing do
   @impl true
   def handle_event("select_plan", %{"id" => id}, socket) do
     plan = Enum.find(socket.assigns.billing_prices, &(&1.id == id))
-    months = 1
-    sepay_params = build_sepay_params(plan, months, socket.assigns.current_user)
-    {:noreply, assign(socket, selected_plan: plan, months: months, sepay_params: sepay_params)}
+    user = socket.assigns.current_user
+
+    # Check if user has a current billing plan that is not free (price > 0)
+    should_warn =
+      user.current_billing != nil &&
+        Decimal.compare(user.current_billing.billing_price.price, Decimal.new(0)) == :gt &&
+        user.current_billing.billing_price_id != plan.id
+
+    if should_warn do
+      # Show warning modal instead of payment modal
+      {:noreply, assign(socket, warning_plan: plan)}
+    else
+      # Proceed normally
+      months = 1
+      sepay_params = build_sepay_params(plan, months, user)
+      {:noreply, assign(socket, selected_plan: plan, months: months, sepay_params: sepay_params)}
+    end
   end
 
   def handle_event("close_modal", _, socket) do
-    {:noreply, assign(socket, selected_plan: nil, sepay_params: nil)}
+    {:noreply, assign(socket, selected_plan: nil, sepay_params: nil, warning_plan: nil)}
+  end
+
+  def handle_event("confirm_warning", _, socket) do
+    plan = socket.assigns.warning_plan
+    user = socket.assigns.current_user
+
+    # Check if the selected plan is free (price = 0)
+    is_free_plan = Decimal.compare(plan.price, Decimal.new(0)) == :eq
+
+    if is_free_plan do
+      # Directly switch to free plan without payment
+      case Billing.switch_to_free_plan(user, plan) do
+        {:ok, {_billing_history, updated_user}} ->
+          {:noreply,
+           socket
+           |> assign(:warning_plan, nil)
+           |> assign(
+             :current_user,
+             Repo.preload(updated_user, [:billing_price, current_billing: :billing_price],
+               force: true
+             )
+           )
+           |> put_flash(:info, "Bạn đã chuyển sang gói #{plan.name} thành công.")}
+
+        {:error, _reason} ->
+          {:noreply,
+           socket
+           |> assign(:warning_plan, nil)
+           |> put_flash(:error, "Có lỗi xảy ra khi chuyển đổi gói. Vui lòng thử lại.")}
+      end
+    else
+      # Proceed with payment for paid plans
+      months = 1
+      sepay_params = build_sepay_params(plan, months, user)
+
+      {:noreply,
+       assign(socket,
+         warning_plan: nil,
+         selected_plan: plan,
+         months: months,
+         sepay_params: sepay_params
+       )}
+    end
+  end
+
+  def handle_event("cancel_warning", _, socket) do
+    {:noreply, assign(socket, warning_plan: nil)}
   end
 
   def handle_event("update_months", %{"months" => months}, socket) do
@@ -250,6 +312,53 @@ defmodule LevanngocWeb.UserLive.Billing do
           </div>
         </div>
       <% end %>
+      
+    <!-- Warning Modal -->
+      <%= if @warning_plan do %>
+        <div class="modal modal-open">
+          <div class="modal-box relative">
+            <button class="btn btn-sm btn-circle absolute right-2 top-2" phx-click="cancel_warning">
+              ✕
+            </button>
+            <h3 class="text-lg font-bold text-warning">⚠️ Cảnh báo</h3>
+
+            <div class="py-4">
+              <div class="alert alert-warning">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="stroke-current shrink-0 h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+                <div>
+                  <p class="font-semibold">
+                    Bạn đang sử dụng gói {@current_user.current_billing.billing_price.name}
+                  </p>
+                  <p class="text-sm mt-1">
+                    Khi chuyển sang gói <strong>{@warning_plan.name}</strong>,
+                    gói hiện tại của bạn sẽ bị mất và không được hoàn lại.
+                  </p>
+                  <p class="text-sm mt-2">Bạn có chắc chắn muốn tiếp tục?</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-action">
+              <button class="btn btn-ghost" phx-click="cancel_warning">Hủy</button>
+              <button class="btn btn-warning" phx-click="confirm_warning">
+                Đồng ý, tiếp tục
+              </button>
+            </div>
+          </div>
+        </div>
+      <% end %>
     </div>
     """
   end
@@ -318,6 +427,10 @@ defmodule LevanngocWeb.UserLive.Billing do
     merchant_id = result.sepay_merchant_id
     secret_key = result.sepay_api_key
 
+    # Get success_url from application config
+    success_url =
+      Application.get_env(:levanngoc, :success_url, "http://localhost:4000/user/billing")
+
     Levanngoc.External.Sepay.build_params(%{
       merchant: merchant_id,
       secret_key: secret_key,
@@ -325,7 +438,8 @@ defmodule LevanngocWeb.UserLive.Billing do
       order_description: "Thanh toán gói #{plan.name} (#{months} tháng)",
       order_invoice_number: invoice_number,
       payment_method: "BANK_TRANSFER",
-      customer_id: user.id
+      customer_id: user.id,
+      success_url: success_url
     })
   end
 end

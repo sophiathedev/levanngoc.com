@@ -142,4 +142,56 @@ defmodule Levanngoc.Billing do
     |> BillingHistory.changeset(attrs)
     |> Repo.insert()
   end
+
+  @doc """
+  Sets is_current to false for all billing histories of a user.
+  """
+  def deactivate_all_user_billing_histories(user_id) do
+    from(bh in BillingHistory,
+      where: bh.user_id == ^user_id and bh.is_current == true
+    )
+    |> Repo.update_all(set: [is_current: false])
+  end
+
+  @doc """
+  Switches user to free plan. This will:
+  1. Set is_current to false for all existing billing histories
+  2. Create a new billing history for the free plan
+  3. Update user's token_amount to 0
+  """
+  def switch_to_free_plan(user, free_plan) do
+    Repo.transaction(fn ->
+      # Step 1: Deactivate all current billing histories
+      deactivate_all_user_billing_histories(user.id)
+
+      # Step 2: Create new billing history for free plan
+      billing_ended_at = DateTime.utc_now() |> DateTime.add(365, :day)
+
+      billing_history_params = %{
+        user_id: user.id,
+        total_pricing: Decimal.new(0),
+        billing_ended_at: billing_ended_at,
+        status: :success,
+        is_current: true,
+        invoice_number: "FREE_#{DateTime.utc_now() |> DateTime.to_unix()}",
+        tokens_per_month: 0,
+        billing_price_id: free_plan.id
+      }
+
+      case create_billing_history(billing_history_params) do
+        {:ok, billing_history} ->
+          # Step 3: Update user's token_amount to 0
+          case Levanngoc.Accounts.update_user_admin(user, %{token_amount: 0}) do
+            {:ok, updated_user} ->
+              {billing_history, updated_user}
+
+            {:error, changeset} ->
+              Repo.rollback(changeset)
+          end
+
+        {:error, changeset} ->
+          Repo.rollback(changeset)
+      end
+    end)
+  end
 end
