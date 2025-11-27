@@ -3,6 +3,7 @@ defmodule Levanngoc.Accounts.UserNotifier do
 
   alias Levanngoc.Mailer
   alias Levanngoc.Accounts.User
+  alias Levanngoc.Settings
 
   # Delivers the email using the application mailer.
   defp deliver(recipient, subject, body) do
@@ -13,8 +14,36 @@ defmodule Levanngoc.Accounts.UserNotifier do
       |> subject(subject)
       |> text_body(body)
 
-    with {:ok, _metadata} <- Mailer.deliver(email) do
+    config = get_mailer_config()
+
+    with {:ok, _metadata} <- Mailer.deliver(email, config) do
       {:ok, email}
+    end
+  end
+
+  defp deliver_html(recipient, subject, body) do
+    email =
+      new()
+      |> to(recipient)
+      |> from({"Levanngoc", "contact@example.com"})
+      |> subject(subject)
+      |> html_body(body)
+
+    config = get_mailer_config()
+
+    with {:ok, _metadata} <- Mailer.deliver(email, config) do
+      {:ok, email}
+    end
+  end
+
+  defp get_mailer_config do
+    case Settings.get_admin_setting() do
+      %Settings.AdminSetting{mailgun_api_key: api_key, mailgun_domain: domain}
+      when is_binary(api_key) and is_binary(domain) ->
+        [api_key: api_key, domain: domain]
+
+      _ ->
+        []
     end
   end
 
@@ -79,6 +108,31 @@ defmodule Levanngoc.Accounts.UserNotifier do
     Nếu bạn không tạo tài khoản với chúng tôi, vui lòng bỏ qua email này.
 
     ==============================
+    """)
+  end
+
+  @doc """
+  Deliver test email.
+  """
+  def deliver_test_email(user) do
+    deliver_html(user.email, "Test Email from Levanngoc", """
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Test Email</title>
+      </head>
+      <body style="font-family: sans-serif; line-height: 1.5; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #2563eb;">Xin chào #{user.email},</h1>
+          <p>Đây là email test để kiểm tra cấu hình gửi mail.</p>
+          <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p style="margin: 0; font-weight: 600;">Nếu bạn nhận được email này, nghĩa là cấu hình gửi mail đã hoạt động chính xác.</p>
+          </div>
+          <p style="color: #6b7280; font-size: 0.875rem;">Sent from Levanngoc System</p>
+        </div>
+      </body>
+    </html>
     """)
   end
 end

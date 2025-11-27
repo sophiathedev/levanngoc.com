@@ -34,12 +34,20 @@
               tabindex="0"
               class="dropdown-content menu bg-base-100 rounded-box z-[1] w-64 p-2 shadow"
             >
-              <%= if @current_scope.user.billing_price do %>
+              <%
+                # Display current active billing plan or fall back to default billing_price
+                current_plan = if @current_scope.user.current_billing do
+                  @current_scope.user.current_billing.billing_price
+                else
+                  @current_scope.user.billing_price
+                end
+              %>
+              <%= if current_plan do %>
                 <li class="menu-title px-4 py-2">
                   <div class="flex flex-col gap-1">
                     <span class="text-xs text-base-content/60">Gói hiện tại</span>
                     <span class="text-sm font-semibold text-primary">
-                      <%= @current_scope.user.billing_price.name %> (<%= Number.Delimit.number_to_delimited(@current_scope.user.token_amount, precision: 0) %> tokens)
+                      <%= current_plan.name %> (<%= Number.Delimit.number_to_delimited(@current_scope.user.token_amount, precision: 0) %> tokens)
                     </span>
                   </div>
                 </li>
@@ -162,7 +170,7 @@
                   d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
                 />
               </svg>
-              <span>Kiểm tra Keyword Ranking</span>
+              <span>Kiểm tra thứ hạng từ khóa</span>
             </.link>
           </li>
         </ul>

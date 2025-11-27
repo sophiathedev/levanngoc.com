@@ -37,29 +37,6 @@ defmodule LevanngocWeb.UserLive.Login do
       <.form
         :let={f}
         for={@form}
-        id="login_form_magic"
-        action={~p"/users/log-in"}
-        phx-submit="submit_magic"
-      >
-        <.input
-          readonly={!!@current_scope}
-          field={f[:email]}
-          type="email"
-          label="Email"
-          autocomplete="username"
-          required
-          phx-mounted={JS.focus()}
-        />
-        <.button class="btn btn-primary w-full">
-          Đăng nhập bằng email <span aria-hidden="true">→</span>
-        </.button>
-      </.form>
-
-      <div class="divider">hoặc</div>
-
-      <.form
-        :let={f}
-        for={@form}
         id="login_form_password"
         action={~p"/users/log-in"}
         phx-submit="submit_password"
@@ -104,43 +81,6 @@ defmodule LevanngocWeb.UserLive.Login do
   @impl true
   def handle_event("submit_password", _params, socket) do
     {:noreply, assign(socket, :trigger_submit, true)}
-  end
-
-  def handle_event("submit_magic", %{"user" => %{"email" => email}}, socket) do
-    user = Accounts.get_user_by_email(email)
-
-    cond do
-      user && user.banned_at ->
-        {:noreply,
-         socket
-         |> put_flash(
-           :error,
-           "Người dùng này hiện đã bị ban, vui lòng liên hệ admin để được xử lý"
-         )}
-
-      user ->
-        Accounts.deliver_login_instructions(
-          user,
-          &url(~p"/users/log-in/#{&1}")
-        )
-
-        info =
-          "Nếu email của bạn có trong hệ thống, bạn sẽ nhận được hướng dẫn đăng nhập trong thời gian ngắn."
-
-        {:noreply,
-         socket
-         |> put_flash(:info, info)
-         |> push_navigate(to: ~p"/users/log-in")}
-
-      true ->
-        info =
-          "Nếu email của bạn có trong hệ thống, bạn sẽ nhận được hướng dẫn đăng nhập trong thời gian ngắn."
-
-        {:noreply,
-         socket
-         |> put_flash(:info, info)
-         |> push_navigate(to: ~p"/users/log-in")}
-    end
   end
 
   defp local_mail_adapter? do

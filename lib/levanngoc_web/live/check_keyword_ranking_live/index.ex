@@ -29,7 +29,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
 
     {:ok,
      socket
-     |> assign(:page_title, "Kiểm tra Keyword Ranking")
+     |> assign(:page_title, "Kiểm tra thứ hạng từ khóa")
      |> assign(:keyword_checkings, pagination.entries)
      |> assign(:page, pagination.page)
      |> assign(:per_page, pagination.per_page)

@@ -3,6 +3,7 @@ defmodule LevanngocWeb.AdminLive.Api do
 
   alias Levanngoc.Settings.AdminSetting
   alias Levanngoc.Repo
+  alias Levanngoc.Accounts.UserNotifier
 
   @impl true
   def mount(_params, _session, socket) do
@@ -16,14 +17,11 @@ defmodule LevanngocWeb.AdminLive.Api do
         :scrapingdog_form,
         to_form(%{"api_key" => get_api_key(settings, :scraping_dog_api_key)})
       )
-      |> assign(:mailgun_form, to_form(%{"api_key" => get_api_key(settings, :mailgun_api_key)}))
       |> assign(
-        :proxy_form,
+        :mailgun_form,
         to_form(%{
-          "proxy_host" => get_api_key(settings, :proxy_host),
-          "proxy_port" => get_api_key(settings, :proxy_port),
-          "proxy_username" => get_api_key(settings, :proxy_username),
-          "proxy_password" => get_api_key(settings, :proxy_password)
+          "api_key" => get_api_key(settings, :mailgun_api_key),
+          "domain" => get_api_key(settings, :mailgun_domain)
         })
       )
       |> assign(
@@ -52,37 +50,34 @@ defmodule LevanngocWeb.AdminLive.Api do
   end
 
   @impl true
-  def handle_event("save_mailgun", %{"api_key" => api_key}, socket) do
-    case save_or_update_setting(:mailgun_api_key, api_key) do
+  def handle_event("save_mailgun", %{"api_key" => api_key, "domain" => domain}, socket) do
+    mailgun_attrs = %{
+      mailgun_api_key: api_key,
+      mailgun_domain: domain
+    }
+
+    case save_or_update_mailgun_settings(mailgun_attrs) do
       {:ok, updated_settings} ->
         {:noreply,
          socket
          |> assign(:settings, updated_settings)
-         |> put_flash(:info, "Lưu API key Mailgun thành công")}
+         |> put_flash(:info, "Lưu cấu hình Mailgun thành công")}
 
       {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, "Lưu API key Mailgun thất bại")}
+        {:noreply, put_flash(socket, :error, "Lưu cấu hình Mailgun thất bại")}
     end
   end
 
   @impl true
-  def handle_event("save_proxy", params, socket) do
-    proxy_attrs = %{
-      proxy_host: params["proxy_host"],
-      proxy_port: params["proxy_port"],
-      proxy_username: params["proxy_username"],
-      proxy_password: params["proxy_password"]
-    }
+  def handle_event("test_mailgun", _params, socket) do
+    user = socket.assigns.current_scope.user
 
-    case save_or_update_proxy_settings(proxy_attrs) do
-      {:ok, updated_settings} ->
-        {:noreply,
-         socket
-         |> assign(:settings, updated_settings)
-         |> put_flash(:info, "Lưu cấu hình proxy thành công")}
+    case UserNotifier.deliver_test_email(user) do
+      {:ok, _} ->
+        {:noreply, put_flash(socket, :info, "Đã gửi email test đến #{user.email}")}
 
-      {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, "Lưu cấu hình proxy thất bại")}
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, "Gửi email thất bại: #{inspect(reason)}")}
     end
   end
 
@@ -128,18 +123,18 @@ defmodule LevanngocWeb.AdminLive.Api do
     end
   end
 
-  defp save_or_update_proxy_settings(proxy_attrs) do
+  defp save_or_update_mailgun_settings(mailgun_attrs) do
     case get_settings() do
       nil ->
         # Create new record
         %AdminSetting{}
-        |> AdminSetting.changeset(proxy_attrs)
+        |> AdminSetting.changeset(mailgun_attrs)
         |> Repo.insert()
 
       existing_settings ->
         # Update existing record
         existing_settings
-        |> AdminSetting.changeset(proxy_attrs)
+        |> AdminSetting.changeset(mailgun_attrs)
         |> Repo.update()
     end
   end
@@ -281,8 +276,27 @@ defmodule LevanngocWeb.AdminLive.Api do
                 </label>
               </div>
 
+              <div class="form-control">
+                <label class="label font-semibold text-black">
+                  <span class="label-text">Mailgun Host</span>
+                </label>
+                <input
+                  type="text"
+                  name="domain"
+                  value={@settings.mailgun_domain || ""}
+                  placeholder="Nhập Mailgun Domain (ví dụ: mg.example.com)"
+                  class="input input-bordered w-full font-mono"
+                  maxlength="255"
+                />
+                <label class="label">
+                  <span class="label-text-alt text-black-content">
+                    Tối đa 255 ký tự
+                  </span>
+                </label>
+              </div>
+
               <div class="card-actions justify-end">
-                <button type="button" class="btn">
+                <button type="button" class="btn" phx-click="test_mailgun">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
@@ -321,112 +335,7 @@ defmodule LevanngocWeb.AdminLive.Api do
           </div>
         </div>
         
-    <!-- Proxy Configuration Form -->
-        <div class="card bg-base-200 shadow-xl">
-          <div class="card-body">
-            <h2 class="card-title flex items-center gap-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"
-                />
-              </svg>
-              Proxy Configuration
-            </h2>
-            <p class="text-sm text-black-content mb-4">
-              Cấu hình proxy server cho các kết nối ra ngoài
-            </p>
-
-            <.form for={@proxy_form} phx-submit="save_proxy" class="space-y-4">
-              <div class="form-control">
-                <label class="label font-semibold text-black">
-                  <span class="label-text">Proxy Host</span>
-                </label>
-                <input
-                  type="text"
-                  name="proxy_host"
-                  value={@settings.proxy_host || ""}
-                  placeholder="proxy.example.com"
-                  class="input input-bordered w-full"
-                  maxlength="255"
-                />
-              </div>
-
-              <div class="form-control">
-                <label class="label font-semibold text-black">
-                  <span class="label-text">Proxy Port</span>
-                </label>
-                <input
-                  type="number"
-                  name="proxy_port"
-                  value={@settings.proxy_port || ""}
-                  placeholder="8080"
-                  class="input input-bordered w-full"
-                  min="1"
-                  max="65535"
-                />
-              </div>
-
-              <div class="form-control">
-                <label class="label font-semibold text-black">
-                  <span class="label-text">Proxy Username</span>
-                </label>
-                <input
-                  type="text"
-                  name="proxy_username"
-                  value={@settings.proxy_username || ""}
-                  placeholder="Username (optional)"
-                  class="input input-bordered w-full"
-                  maxlength="255"
-                />
-              </div>
-
-              <div class="form-control">
-                <label class="label font-semibold text-black">
-                  <span class="label-text">Proxy Password</span>
-                </label>
-                <input
-                  type="password"
-                  name="proxy_password"
-                  value={@settings.proxy_password || ""}
-                  placeholder="Password (optional)"
-                  class="input input-bordered w-full"
-                  maxlength="255"
-                />
-              </div>
-
-              <div class="card-actions justify-end">
-                <button type="submit" class="btn btn-primary">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="h-5 w-5 mr-2"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  Lưu Proxy
-                </button>
-              </div>
-            </.form>
-          </div>
-        </div>
-
-        <!-- SePay Configuration Form -->
+    <!-- SePay Configuration Form -->
         <div class="card bg-base-200 shadow-xl">
           <div class="card-body">
             <h2 class="card-title flex items-center gap-2">

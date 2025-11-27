@@ -72,7 +72,9 @@ defmodule Levanngoc.MixProject do
       {:xlsxir, "~> 1.6"},
       {:nimble_csv, "~> 1.2"},
       {:elixlsx, "~> 0.5.1"},
-      {:number, "~> 1.0.5"}
+      {:number, "~> 1.0.5"},
+      {:multipart, "~> 0.4"},
+      {:oban, "~> 2.19"}
     ]
   end
 

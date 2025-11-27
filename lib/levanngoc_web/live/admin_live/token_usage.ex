@@ -9,7 +9,9 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
     settings = get_settings()
     token_url_index_value = if settings, do: settings.token_usage_check_url_index || 1, else: 1
     token_allintitle_value = if settings, do: settings.token_usage_check_allintitle || 1, else: 1
-    token_keyword_ranking_value = if settings, do: settings.token_usage_keyword_ranking || 1, else: 1
+
+    token_keyword_ranking_value =
+      if settings, do: settings.token_usage_keyword_ranking || 1, else: 1
 
     socket =
       socket
@@ -49,7 +51,9 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
           {:ok, _updated_settings} ->
             # Reload fresh from database to ensure we have the latest value
             fresh_settings = get_settings()
-            new_value = if fresh_settings, do: fresh_settings.token_usage_check_url_index || 1, else: 1
+
+            new_value =
+              if fresh_settings, do: fresh_settings.token_usage_check_url_index || 1, else: 1
 
             {:noreply,
              socket
@@ -93,7 +97,9 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
           {:ok, _updated_settings} ->
             # Reload fresh from database to ensure we have the latest value
             fresh_settings = get_settings()
-            new_value = if fresh_settings, do: fresh_settings.token_usage_check_allintitle || 1, else: 1
+
+            new_value =
+              if fresh_settings, do: fresh_settings.token_usage_check_allintitle || 1, else: 1
 
             {:noreply,
              socket
@@ -137,14 +143,16 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
           {:ok, _updated_settings} ->
             # Reload fresh from database to ensure we have the latest value
             fresh_settings = get_settings()
-            new_value = if fresh_settings, do: fresh_settings.token_usage_keyword_ranking || 1, else: 1
+
+            new_value =
+              if fresh_settings, do: fresh_settings.token_usage_keyword_ranking || 1, else: 1
 
             {:noreply,
              socket
              |> assign(:settings, fresh_settings)
              |> assign(:token_usage_keyword_ranking, new_value)
              |> assign(:editing_keyword_ranking, false)
-             |> put_flash(:info, "Đã cập nhật lượng token sử dụng cho Kiểm tra Keyword Ranking")}
+             |> put_flash(:info, "Đã cập nhật lượng token sử dụng cho Kiểm tra thứ hạng từ khóa")}
 
           {:error, _changeset} ->
             {:noreply, put_flash(socket, :error, "Failed to save Token Usage Keyword Ranking")}
@@ -229,7 +237,7 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
                   </form>
                 <% else %>
                   <span class="font-mono">
-                    <%= @token_usage_check_url_index %>
+                    {@token_usage_check_url_index}
                   </span>
                 <% end %>
               </td>
@@ -326,7 +334,7 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
                   </form>
                 <% else %>
                   <span class="font-mono">
-                    <%= @token_usage_check_allintitle %>
+                    {@token_usage_check_allintitle}
                   </span>
                 <% end %>
               </td>
@@ -408,7 +416,7 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
                       d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
                     />
                   </svg>
-                  Kiểm tra Keyword Ranking
+                  Kiểm tra thứ hạng từ khóa
                 </div>
               </td>
               <td class="text-center">
@@ -425,14 +433,18 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
                   </form>
                 <% else %>
                   <span class="font-mono">
-                    <%= @token_usage_keyword_ranking %>
+                    {@token_usage_keyword_ranking}
                   </span>
                 <% end %>
               </td>
               <td>
                 <%= if @editing_keyword_ranking do %>
                   <div class="flex gap-2">
-                    <button type="submit" form="token-keyword-ranking-form" class="btn btn-success btn-sm">
+                    <button
+                      type="submit"
+                      form="token-keyword-ranking-form"
+                      class="btn btn-success btn-sm"
+                    >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         class="h-4 w-4"
@@ -449,7 +461,11 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
                       </svg>
                       Lưu
                     </button>
-                    <button type="button" phx-click="cancel_keyword_ranking" class="btn btn-ghost btn-sm">
+                    <button
+                      type="button"
+                      phx-click="cancel_keyword_ranking"
+                      class="btn btn-ghost btn-sm"
+                    >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         class="h-4 w-4"
@@ -468,7 +484,11 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
                     </button>
                   </div>
                 <% else %>
-                  <button type="button" phx-click="edit_keyword_ranking" class="btn btn-primary btn-sm">
+                  <button
+                    type="button"
+                    phx-click="edit_keyword_ranking"
+                    class="btn btn-primary btn-sm"
+                  >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       class="h-4 w-4"

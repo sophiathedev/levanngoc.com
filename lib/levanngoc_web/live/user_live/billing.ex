@@ -3,19 +3,24 @@ defmodule LevanngocWeb.UserLive.Billing do
 
   alias Levanngoc.Billing
   alias Levanngoc.Repo
+  alias Levanngoc.Accounts.User
   alias Levanngoc.Utils.DateHelper
 
   import Ecto.Query
 
   @impl true
   def mount(_params, _session, socket) do
-    user = socket.assigns.current_scope.user
-    # Ensure billing_price is preloaded
-    user = Levanngoc.Repo.preload(user, [:billing_price, current_billing: :billing_price])
+    user_id = socket.assigns.current_scope.user.id
+    # Load user with all associations in a single query
+    user = load_user_with_billing(user_id)
     billing_prices = Billing.list_billing_prices()
+
+    # Update current_scope with reloaded user data
+    updated_scope = %{socket.assigns.current_scope | user: user}
 
     socket =
       socket
+      |> assign(:current_scope, updated_scope)
       |> assign(:current_user, user)
       |> assign(:billing_prices, billing_prices)
       |> assign(:selected_plan, nil)
@@ -24,6 +29,20 @@ defmodule LevanngocWeb.UserLive.Billing do
       |> assign(:warning_plan, nil)
 
     {:ok, socket}
+  end
+
+  @impl true
+  def handle_params(_params, _uri, socket) do
+    # Reload user data when navigating back to this page (e.g., after payment)
+    user = load_user_with_billing(socket.assigns.current_scope.user.id)
+
+    # Update current_scope with fresh user data
+    updated_scope = %{socket.assigns.current_scope | user: user}
+
+    {:noreply,
+     socket
+     |> assign(:current_scope, updated_scope)
+     |> assign(:current_user, user)}
   end
 
   @impl true
@@ -63,15 +82,17 @@ defmodule LevanngocWeb.UserLive.Billing do
       # Directly switch to free plan without payment
       case Billing.switch_to_free_plan(user, plan) do
         {:ok, {_billing_history, updated_user}} ->
+          # Reload user with all necessary associations in a single query
+          reloaded_user = load_user_with_billing(updated_user.id)
+
+          # Update current_scope with the new user data
+          updated_scope = %{socket.assigns.current_scope | user: reloaded_user}
+
           {:noreply,
            socket
            |> assign(:warning_plan, nil)
-           |> assign(
-             :current_user,
-             Repo.preload(updated_user, [:billing_price, current_billing: :billing_price],
-               force: true
-             )
-           )
+           |> assign(:current_user, reloaded_user)
+           |> assign(:current_scope, updated_scope)
            |> put_flash(:info, "Bạn đã chuyển sang gói #{plan.name} thành công.")}
 
         {:error, _reason} ->
@@ -441,5 +462,13 @@ defmodule LevanngocWeb.UserLive.Billing do
       customer_id: user.id,
       success_url: success_url
     })
+  end
+
+  # Load user with all billing associations in a single query to avoid N+1
+  defp load_user_with_billing(user_id) do
+    User
+    |> where([u], u.id == ^user_id)
+    |> preload([:billing_price, current_billing: :billing_price])
+    |> Repo.one!()
   end
 end

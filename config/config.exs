@@ -45,7 +45,7 @@ config :levanngoc, LevanngocWeb.Endpoint,
 #
 # For production it's recommended to configure a different adapter
 # at the `config/runtime.exs`.
-config :levanngoc, Levanngoc.Mailer, adapter: Swoosh.Adapters.Local
+config :levanngoc, Levanngoc.Mailer, adapter: Swoosh.Adapters.Mailgun
 
 # Configure esbuild (the version is required)
 config :esbuild,
@@ -75,6 +75,22 @@ config :logger, :default_formatter,
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
+
+config :levanngoc, Oban,
+  engine: Oban.Engines.Basic,
+  notifier: Oban.Notifiers.Postgres,
+  queues: [default: 10],
+  repo: Levanngoc.Repo,
+  plugins: [
+    {
+      Oban.Plugins.Cron,
+      timezone: "Asia/Ho_Chi_Minh",
+      crontab: [
+        # Run billing tracker job at 0:01 AM every day
+        {"1 0 * * *", Levanngoc.Jobs.BillingTracker}
+      ]
+    }
+  ]
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

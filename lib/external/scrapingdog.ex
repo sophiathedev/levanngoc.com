@@ -64,6 +64,37 @@ defmodule Levanngoc.External.ScrapingDog do
     end
   end
 
+  def check_keyword_ranking(%__MODULE__{} = state, keyword, url) do
+    params = build_params(state, :check_keyword_ranking, keyword)
+
+    query_string = URI.encode_query(params)
+    full_url = "#{@check_index_url_endpoint}?#{query_string}"
+
+    case HTTPoison.get(full_url, [], recv_timeout: :timer.seconds(60)) do
+      {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
+        case Jason.decode(body) do
+          {:ok, data} ->
+            organic_results = Map.get(data, "organic_results", [])
+
+            results =
+              Enum.find(organic_results, fn result ->
+                String.contains?(result["link"], url)
+              end)
+
+            results["rank"]
+
+          {:error, reason} ->
+            raise "Failed to parse JSON response: #{inspect(reason)}"
+        end
+
+      {:ok, %HTTPoison.Response{status_code: status_code, body: body}} ->
+        raise "Request failed with status code #{status_code}: #{body}"
+
+      {:error, %HTTPoison.Error{reason: reason}} ->
+        raise "HTTP request failed: #{inspect(reason)}"
+    end
+  end
+
   defp build_params(%__MODULE__{} = state, :check_url_index, url) do
     %{
       api_key: state.api_key,
@@ -83,6 +114,17 @@ defmodule Levanngoc.External.ScrapingDog do
       advance_search: "true",
       domain: "google.com",
       language: "en"
+    }
+  end
+
+  defp build_params(%__MODULE__{} = state, :check_keyword_ranking, keyword) do
+    %{
+      api_key: state.api_key,
+      query: "#{keyword}",
+      country: "vn",
+      advance_search: "true",
+      domain: "google.com",
+      language: "vn"
     }
   end
 end

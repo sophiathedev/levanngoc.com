@@ -63,6 +63,20 @@ defmodule Levanngoc.Accounts do
   ## User registration
 
   @doc """
+  Returns an `%Ecto.Changeset{}` for tracking user registration changes.
+
+  ## Examples
+
+      iex> change_user_registration(user)
+      %Ecto.Changeset{data: %User{}}
+
+  """
+  def change_user_registration(%User{} = user, attrs \\ %{}) do
+    User.email_changeset(user, attrs, validate_unique: false)
+    |> User.password_changeset(attrs, hash_password: false)
+  end
+
+  @doc """
   Registers a user.
 
   ## Examples
@@ -81,6 +95,7 @@ defmodule Levanngoc.Accounts do
     user_changeset =
       %User{}
       |> User.email_changeset(attrs)
+      |> User.password_changeset(attrs)
 
     # Only assign the free plan if it exists
     user_changeset =
@@ -206,7 +221,7 @@ defmodule Levanngoc.Accounts do
     query
     |> Repo.one()
     |> case do
-      {user, token_time} -> {Repo.preload(user, :billing_price), token_time}
+      {user, token_time} -> {Repo.preload(user, [:billing_price, current_billing: :billing_price]), token_time}
       nil -> nil
     end
   end

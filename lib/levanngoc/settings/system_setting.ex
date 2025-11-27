@@ -7,10 +7,7 @@ defmodule Levanngoc.Settings.AdminSetting do
   schema "admin_settings" do
     field :scraping_dog_api_key, :string
     field :mailgun_api_key, :string
-    field :proxy_host, :string
-    field :proxy_port, :integer
-    field :proxy_username, :string
-    field :proxy_password, :string
+    field :mailgun_domain, :string
     field :sepay_merchant_id, :string
     field :sepay_api_key, :string
     field :token_usage_check_url_index, :integer
@@ -26,10 +23,7 @@ defmodule Levanngoc.Settings.AdminSetting do
     |> cast(attrs, [
       :scraping_dog_api_key,
       :mailgun_api_key,
-      :proxy_host,
-      :proxy_port,
-      :proxy_username,
-      :proxy_password,
+      :mailgun_domain,
       :sepay_merchant_id,
       :sepay_api_key,
       :token_usage_check_url_index,
@@ -38,10 +32,7 @@ defmodule Levanngoc.Settings.AdminSetting do
     ])
     |> validate_length(:scraping_dog_api_key, max: 1024)
     |> validate_length(:mailgun_api_key, max: 1024)
-    |> validate_length(:proxy_host, max: 255)
-    |> validate_number(:proxy_port, greater_than: 0, less_than_or_equal_to: 65535)
-    |> validate_length(:proxy_username, max: 255)
-    |> validate_length(:proxy_password, max: 255)
+    |> validate_length(:mailgun_domain, max: 255)
     |> validate_length(:sepay_merchant_id, max: 512)
     |> validate_length(:sepay_api_key, max: 512)
     |> validate_number(:token_usage_check_url_index, greater_than: 0)
