@@ -17,6 +17,12 @@ config :swoosh, api_client: Swoosh.ApiClient.Req
 config :swoosh, local: false
 
 # Do not print debug messages in production
+config :logger,
+  level: :info,
+  backends: [:console, {LoggerFileBackend, :file_log}]
 
-# Runtime production configuration, including reading
-# of environment variables, is done on config/runtime.exs.
+config :logger, :file_log,
+  path: "production.log",
+  level: :info,
+  format: "$time $metadata[$level] $message\n",
+  metadata: [:request_id]
