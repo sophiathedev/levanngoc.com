@@ -20,6 +20,10 @@ if System.get_env("PHX_SERVER") do
   config :levanngoc, LevanngocWeb.Endpoint, server: true
 end
 
+config :levanngoc,
+       :google_application_credentials,
+       System.get_env("GOOGLE_APPLICATION_CREDENTIALS")
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||

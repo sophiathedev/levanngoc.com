@@ -13,15 +13,25 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
     token_keyword_ranking_value =
       if settings, do: settings.token_usage_keyword_ranking || 0, else: 0
 
+    token_keyword_grouping_value =
+      if settings, do: settings.token_usage_keyword_grouping || 0, else: 0
+
+    token_checking_duplicate_content_value =
+      if settings, do: settings.token_usage_checking_duplicate_content || 0, else: 0
+
     socket =
       socket
       |> assign(:settings, settings)
       |> assign(:token_usage_check_url_index, token_url_index_value)
       |> assign(:token_usage_check_allintitle, token_allintitle_value)
       |> assign(:token_usage_keyword_ranking, token_keyword_ranking_value)
+      |> assign(:token_usage_keyword_grouping, token_keyword_grouping_value)
+      |> assign(:token_usage_checking_duplicate_content, token_checking_duplicate_content_value)
       |> assign(:editing_url_index, false)
       |> assign(:editing_allintitle, false)
       |> assign(:editing_keyword_ranking, false)
+      |> assign(:editing_keyword_grouping, false)
+      |> assign(:editing_checking_duplicate_content, false)
 
     {:ok, socket}
   end
@@ -161,6 +171,98 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
       _ ->
         {:noreply,
          put_flash(socket, :error, "Token Usage Keyword Ranking must be a positive integer")}
+    end
+  end
+
+  @impl true
+  def handle_event("edit_keyword_grouping", _params, socket) do
+    {:noreply, assign(socket, :editing_keyword_grouping, true)}
+  end
+
+  @impl true
+  def handle_event("cancel_keyword_grouping", _params, socket) do
+    # Reset to the saved value from database
+    settings = socket.assigns.settings
+    saved_value = if settings, do: settings.token_usage_keyword_grouping || 0, else: 0
+
+    {:noreply,
+     socket
+     |> assign(:editing_keyword_grouping, false)
+     |> assign(:token_usage_keyword_grouping, saved_value)}
+  end
+
+  @impl true
+  def handle_event("save_keyword_grouping", %{"token_value" => value_str}, socket) do
+    case Integer.parse(value_str) do
+      {int_value, ""} when int_value > 0 ->
+        case save_or_update_setting(:token_usage_keyword_grouping, int_value) do
+          {:ok, _updated_settings} ->
+            # Reload fresh from database to ensure we have the latest value
+            fresh_settings = get_settings()
+
+            new_value =
+              if fresh_settings, do: fresh_settings.token_usage_keyword_grouping || 0, else: 0
+
+            {:noreply,
+             socket
+             |> assign(:settings, fresh_settings)
+             |> assign(:token_usage_keyword_grouping, new_value)
+             |> assign(:editing_keyword_grouping, false)
+             |> put_flash(:info, "Đã cập nhật lượng token sử dụng cho Gom nhóm từ khóa")}
+
+          {:error, _changeset} ->
+            {:noreply, put_flash(socket, :error, "Failed to save Token Usage Keyword Grouping")}
+        end
+
+      _ ->
+        {:noreply,
+         put_flash(socket, :error, "Token Usage Keyword Grouping must be a positive integer")}
+    end
+  end
+
+  @impl true
+  def handle_event("edit_checking_duplicate_content", _params, socket) do
+    {:noreply, assign(socket, :editing_checking_duplicate_content, true)}
+  end
+
+  @impl true
+  def handle_event("cancel_checking_duplicate_content", _params, socket) do
+    # Reset to the saved value from database
+    settings = socket.assigns.settings
+    saved_value = if settings, do: settings.token_usage_checking_duplicate_content || 0, else: 0
+
+    {:noreply,
+     socket
+     |> assign(:editing_checking_duplicate_content, false)
+     |> assign(:token_usage_checking_duplicate_content, saved_value)}
+  end
+
+  @impl true
+  def handle_event("save_checking_duplicate_content", %{"token_value" => value_str}, socket) do
+    case Integer.parse(value_str) do
+      {int_value, ""} when int_value > 0 ->
+        case save_or_update_setting(:token_usage_checking_duplicate_content, int_value) do
+          {:ok, _updated_settings} ->
+            # Reload fresh from database to ensure we have the latest value
+            fresh_settings = get_settings()
+
+            new_value =
+              if fresh_settings, do: fresh_settings.token_usage_checking_duplicate_content || 0, else: 0
+
+            {:noreply,
+             socket
+             |> assign(:settings, fresh_settings)
+             |> assign(:token_usage_checking_duplicate_content, new_value)
+             |> assign(:editing_checking_duplicate_content, false)
+             |> put_flash(:info, "Đã cập nhật lượng token sử dụng cho Kiểm tra trùng lặp nội dung")}
+
+          {:error, _changeset} ->
+            {:noreply, put_flash(socket, :error, "Failed to save Token Usage Checking Duplicate Content")}
+        end
+
+      _ ->
+        {:noreply,
+         put_flash(socket, :error, "Token Usage Checking Duplicate Content must be a positive integer")}
     end
   end
 
@@ -487,6 +589,224 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
                   <button
                     type="button"
                     phx-click="edit_keyword_ranking"
+                    class="btn btn-primary btn-sm"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                      />
+                    </svg>
+                    Chỉnh sửa
+                  </button>
+                <% end %>
+              </td>
+            </tr>
+            <tr>
+              <td class="font-semibold">
+                <div class="flex items-center gap-2">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                    />
+                  </svg>
+                  Gom nhóm từ khóa
+                </div>
+              </td>
+              <td class="text-center">
+                <%= if @editing_keyword_grouping do %>
+                  <form id="token-keyword-grouping-form" phx-submit="save_keyword_grouping">
+                    <input
+                      type="number"
+                      name="token_value"
+                      value={@token_usage_keyword_grouping}
+                      class="input input-bordered w-32"
+                      min="1"
+                      required
+                    />
+                  </form>
+                <% else %>
+                  <span class="font-mono">
+                    {@token_usage_keyword_grouping}
+                  </span>
+                <% end %>
+              </td>
+              <td>
+                <%= if @editing_keyword_grouping do %>
+                  <div class="flex gap-2">
+                    <button
+                      type="submit"
+                      form="token-keyword-grouping-form"
+                      class="btn btn-success btn-sm"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                      Lưu
+                    </button>
+                    <button
+                      type="button"
+                      phx-click="cancel_keyword_grouping"
+                      class="btn btn-ghost btn-sm"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                      Hủy
+                    </button>
+                  </div>
+                <% else %>
+                  <button
+                    type="button"
+                    phx-click="edit_keyword_grouping"
+                    class="btn btn-primary btn-sm"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                      />
+                    </svg>
+                    Chỉnh sửa
+                  </button>
+                <% end %>
+              </td>
+            </tr>
+            <tr>
+              <td class="font-semibold">
+                <div class="flex items-center gap-2">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  Kiểm tra trùng lặp nội dung
+                </div>
+              </td>
+              <td class="text-center">
+                <%= if @editing_checking_duplicate_content do %>
+                  <form id="token-checking-duplicate-content-form" phx-submit="save_checking_duplicate_content">
+                    <input
+                      type="number"
+                      name="token_value"
+                      value={@token_usage_checking_duplicate_content}
+                      class="input input-bordered w-32"
+                      min="1"
+                      required
+                    />
+                  </form>
+                <% else %>
+                  <span class="font-mono">
+                    {@token_usage_checking_duplicate_content}
+                  </span>
+                <% end %>
+              </td>
+              <td>
+                <%= if @editing_checking_duplicate_content do %>
+                  <div class="flex gap-2">
+                    <button
+                      type="submit"
+                      form="token-checking-duplicate-content-form"
+                      class="btn btn-success btn-sm"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                      Lưu
+                    </button>
+                    <button
+                      type="button"
+                      phx-click="cancel_checking_duplicate_content"
+                      class="btn btn-ghost btn-sm"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                      Hủy
+                    </button>
+                  </div>
+                <% else %>
+                  <button
+                    type="button"
+                    phx-click="edit_checking_duplicate_content"
                     class="btn btn-primary btn-sm"
                   >
                     <svg

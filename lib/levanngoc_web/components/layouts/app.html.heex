@@ -89,7 +89,7 @@
   </div>
   <div class="drawer-side">
     <label for="app-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
-    <aside class="bg-base-200 min-h-full w-60">
+    <aside class="bg-base-200 min-h-full w-65">
       <div class="sticky top-0">
         <div class="p-5 border-base-300">
           <.link href="/" class="flex items-center gap-2 justify-center">
@@ -171,6 +171,44 @@
                 />
               </svg>
               <span>Kiểm tra thứ hạng từ khóa</span>
+            </.link>
+          </li>
+          <li>
+            <.link href={~p"/keyword_grouping"} class="flex items-center gap-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                />
+              </svg>
+              <span>Gom nhóm từ khóa</span>
+            </.link>
+          </li>
+          <li>
+            <.link href={~p"/check_duplicate_content"} class="flex items-center gap-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              <span>Kiểm tra trùng lặp nội dung</span>
             </.link>
           </li>
         </ul>

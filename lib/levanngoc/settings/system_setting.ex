@@ -13,6 +13,8 @@ defmodule Levanngoc.Settings.AdminSetting do
     field :token_usage_check_url_index, :integer
     field :token_usage_check_allintitle, :integer
     field :token_usage_keyword_ranking, :integer
+    field :token_usage_keyword_grouping, :integer
+    field :token_usage_checking_duplicate_content, :integer
 
     timestamps(type: :utc_datetime)
   end
@@ -28,7 +30,9 @@ defmodule Levanngoc.Settings.AdminSetting do
       :sepay_api_key,
       :token_usage_check_url_index,
       :token_usage_check_allintitle,
-      :token_usage_keyword_ranking
+      :token_usage_keyword_ranking,
+      :token_usage_keyword_grouping,
+      :token_usage_checking_duplicate_content
     ])
     |> validate_length(:scraping_dog_api_key, max: 1024)
     |> validate_length(:mailgun_api_key, max: 1024)
@@ -38,5 +42,7 @@ defmodule Levanngoc.Settings.AdminSetting do
     |> validate_number(:token_usage_check_url_index, greater_than: 0)
     |> validate_number(:token_usage_check_allintitle, greater_than: 0)
     |> validate_number(:token_usage_keyword_ranking, greater_than: 0)
+    |> validate_number(:token_usage_keyword_grouping, greater_than: 0)
+    |> validate_number(:token_usage_checking_duplicate_content, greater_than: 0)
   end
 end

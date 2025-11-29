@@ -1,6 +1,8 @@
 defmodule LevanngocWeb.CheckUrlIndexLive.Index do
   use LevanngocWeb, :live_view
 
+  import LevanngocWeb.LiveHelpers
+
   alias Levanngoc.Repo
   alias Levanngoc.Settings.AdminSetting
   alias Levanngoc.Accounts
@@ -389,7 +391,7 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
                   <span class="label-text">Nhập URL (mỗi URL một dòng)</span>
                 </label>
                 <textarea
-                  class="textarea textarea-bordered w-full flex-1"
+                  class="w-full flex-1 textarea textarea-bordered rounded-lg"
                   placeholder="https://example.com/page1&#10;https://example.com/page2&#10;https://example.com/page3"
                   phx-change="update_manual_urls"
                   name="urls"
@@ -463,7 +465,11 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
                         </div>
                       <% end %>
                     <% end %>
-                    <.live_file_input upload={@uploads.file} class="hidden" disabled={!@is_logged_in or @is_processing} />
+                    <.live_file_input
+                      upload={@uploads.file}
+                      class="hidden"
+                      disabled={!@is_logged_in or @is_processing}
+                    />
                   </label>
                 </div>
               </div>
@@ -485,9 +491,9 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
                 disabled={!@is_logged_in or @is_processing}
               >
                 <%= if @is_edit_mode do %>
-                  File Mode
+                  Chế độ File
                 <% else %>
-                  Edit Mode
+                  Chế độ chỉnh sửa
                 <% end %>
               </button>
               <button
@@ -789,17 +795,4 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
     <% end %>
     """
   end
-
-  defp humanize_size(size) do
-    cond do
-      size < 1024 -> "#{size} B"
-      size < 1024 * 1024 -> "#{Float.round(size / 1024, 2)} KB"
-      true -> "#{Float.round(size / (1024 * 1024), 2)} MB"
-    end
-  end
-
-  defp error_to_string(:too_large), do: "File quá lớn (Max 32MB)"
-  defp error_to_string(:too_many_files), do: "Chỉ được upload 1 file"
-  defp error_to_string(:not_accepted), do: "Định dạng file không hợp lệ"
-  defp error_to_string(_), do: "Có lỗi xảy ra"
 end

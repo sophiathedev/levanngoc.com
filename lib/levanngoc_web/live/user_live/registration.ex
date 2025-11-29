@@ -30,23 +30,9 @@ defmodule LevanngocWeb.UserLive.Registration do
           required
           phx-mounted={JS.focus()}
         />
-        <.input
-          field={@form[:password]}
-          type="password"
-          label="Mật khẩu"
-          autocomplete="new-password"
-          required
-        />
-        <.input
-          field={@form[:password_confirmation]}
-          type="password"
-          label="Xác nhận mật khẩu"
-          autocomplete="new-password"
-          required
-        />
 
         <.button phx-disable-with="Đang tạo tài khoản..." class="btn btn-primary w-full">
-          Tạo tài khoản
+          Đăng ký
         </.button>
       </.form>
     </div>
@@ -73,7 +59,7 @@ defmodule LevanngocWeb.UserLive.Registration do
          socket
          |> put_flash(
            :info,
-           "Tài khoản đã được tạo thành công! Vui lòng đăng nhập."
+           "Email đã được gửi đến tài khoản email của bạn, vui lòng kiểm tra hộp thư đến hoặc thư mục spam."
          )
          |> push_navigate(to: ~p"/users/log-in")}
 

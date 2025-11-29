@@ -24,6 +24,22 @@ defmodule Levanngoc.Application do
       }
     })
 
+    # Google Authentication via service account
+    google_credentials =
+      Application.get_env(:levanngoc, :google_application_credentials)
+      |> File.read!()
+      |> Jason.decode!()
+
+    google_authentication_scopes = [
+      # Allow for drive
+      "https://www.googleapis.com/auth/drive",
+      # Allow for sheets
+      "https://www.googleapis.com/auth/spreadsheets"
+    ]
+
+    google_authentication_source =
+      {:service_account, google_credentials, [scopes: google_authentication_scopes]}
+
     children = [
       LevanngocWeb.Telemetry,
       Levanngoc.Repo,
@@ -38,7 +54,8 @@ defmodule Levanngoc.Application do
       ),
       Supervisor.child_spec({Task, fn -> ensure_default_admin_setting() end},
         id: :ensure_admin_setting_task
-      )
+      ),
+      {Goth, name: Levanngoc.Goth, source: google_authentication_source}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

@@ -101,8 +101,7 @@ defmodule Levanngoc.External.ScrapingDog do
       query: "site:#{url}",
       country: "vn",
       advance_search: "false",
-      domain: "google.com",
-      language: "en"
+      domain: "google.com"
     }
   end
 
@@ -112,8 +111,7 @@ defmodule Levanngoc.External.ScrapingDog do
       query: "allintitle:#{keyword}",
       country: "vn",
       advance_search: "true",
-      domain: "google.com",
-      language: "en"
+      domain: "google.com"
     }
   end
 
@@ -123,8 +121,7 @@ defmodule Levanngoc.External.ScrapingDog do
       query: "#{keyword}",
       country: "vn",
       advance_search: "true",
-      domain: "google.com",
-      language: "vn"
+      domain: "google.com"
     }
   end
 end

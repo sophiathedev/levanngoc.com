@@ -1,6 +1,8 @@
 defmodule LevanngocWeb.CheckAllInTitleLive.Index do
   use LevanngocWeb, :live_view
 
+  import LevanngocWeb.LiveHelpers
+
   alias Levanngoc.Repo
   alias Levanngoc.Settings.AdminSetting
   alias Levanngoc.Accounts
@@ -84,6 +86,8 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
             consume_uploaded_entries(socket, :file, fn %{path: path}, entry ->
               parse_file(path, entry.client_type)
             end)
+
+          dbg(uploaded_files)
 
           List.flatten(uploaded_files)
         end
@@ -198,7 +202,8 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
             keywords
             |> Task.async_stream(
               fn keyword ->
-                result_count = Levanngoc.External.ScrapingDog.check_allintitle(scraping_dog, keyword)
+                result_count =
+                  Levanngoc.External.ScrapingDog.check_allintitle(scraping_dog, keyword)
 
                 %{keyword: keyword, result_count: result_count}
               end,
@@ -277,7 +282,8 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
     {:noreply,
      socket
      |> assign(:is_processing, false)
-     |> assign(:uploaded_files, []) # Clear uploaded files or keep them? Usually clear after processing
+     # Clear uploaded files or keep them? Usually clear after processing
+     |> assign(:uploaded_files, [])
      |> assign(:result_stats, result_stats)
      |> assign(:check_results, all_results)
      |> assign(:show_result_modal, true)}
@@ -310,8 +316,7 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
 
     {:ok, {_filename, content}} = Elixlsx.write_to_memory(workbook, filename)
 
-    {content, filename,
-     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
+    {content, filename, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
   end
 
   defp pad_zero(num) when num < 10, do: "0#{num}"
@@ -320,7 +325,8 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
   defp to_ho_chi_minh_time(datetime) do
     case DateTime.shift_zone(datetime, "Asia/Ho_Chi_Minh") do
       {:ok, converted_datetime} -> converted_datetime
-      {:error, _} -> datetime  # fallback to original if timezone conversion fails
+      # fallback to original if timezone conversion fails
+      {:error, _} -> datetime
     end
   end
 
@@ -386,7 +392,7 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
                   <span class="label-text">Nhập từ khóa (mỗi từ khóa một dòng)</span>
                 </label>
                 <textarea
-                  class="textarea textarea-bordered w-full flex-1"
+                  class="w-full flex-1 textarea textarea-bordered rounded-lg"
                   placeholder="keyword1&#10;keyword2&#10;keyword3"
                   phx-change="update_manual_keywords"
                   name="keywords"
@@ -399,7 +405,10 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
                   <span class="label-text">Chọn file (xlsx, csv)</span>
                 </label>
 
-                <div class="flex items-center justify-center w-full flex-1" phx-drop-target={@uploads.file.ref}>
+                <div
+                  class="flex items-center justify-center w-full flex-1"
+                  phx-drop-target={@uploads.file.ref}
+                >
                   <label
                     for={@uploads.file.ref}
                     class={"flex flex-col items-center justify-center w-full h-full border-2 border-dashed rounded-lg cursor-pointer bg-base-50 hover:bg-base-200 border-base-300 relative #{if !@is_logged_in or @is_processing, do: "opacity-50 pointer-events-none", else: ""}"}
@@ -457,7 +466,11 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
                         </div>
                       <% end %>
                     <% end %>
-                    <.live_file_input upload={@uploads.file} class="hidden" disabled={!@is_logged_in or @is_processing} />
+                    <.live_file_input
+                      upload={@uploads.file}
+                      class="hidden"
+                      disabled={!@is_logged_in or @is_processing}
+                    />
                   </label>
                 </div>
               </div>
@@ -479,15 +492,18 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
                 disabled={!@is_logged_in or @is_processing}
               >
                 <%= if @is_edit_mode do %>
-                  File Mode
+                  Chế độ File
                 <% else %>
-                  Edit Mode
+                  Chế độ chỉnh sửa
                 <% end %>
               </button>
               <button
                 type="submit"
                 class="btn btn-primary min-w-[160px]"
-                disabled={!@is_logged_in or (@uploads.file.entries == [] and !@is_edit_mode) or (@is_edit_mode and @manual_keywords == "") or @is_processing}
+                disabled={
+                  !@is_logged_in or (@uploads.file.entries == [] and !@is_edit_mode) or
+                    (@is_edit_mode and @manual_keywords == "") or @is_processing
+                }
               >
                 <%= if @is_processing do %>
                   {@timer_text}
@@ -626,7 +642,11 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
                     class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52"
                   >
                     <li>
-                      <button phx-click="download" phx-value-type="not_indexed" phx-value-format="xlsx">
+                      <button
+                        phx-click="download"
+                        phx-value-type="not_indexed"
+                        phx-value-format="xlsx"
+                      >
                         Tải xuống (.xlsx)
                       </button>
                     </li>
@@ -776,17 +796,4 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
     <% end %>
     """
   end
-
-  defp humanize_size(size) do
-    cond do
-      size < 1024 -> "#{size} B"
-      size < 1024 * 1024 -> "#{Float.round(size / 1024, 2)} KB"
-      true -> "#{Float.round(size / (1024 * 1024), 2)} MB"
-    end
-  end
-
-  defp error_to_string(:too_large), do: "File quá lớn (Max 32MB)"
-  defp error_to_string(:too_many_files), do: "Chỉ được upload 1 file"
-  defp error_to_string(:not_accepted), do: "Định dạng file không hợp lệ"
-  defp error_to_string(_), do: "Có lỗi xảy ra"
 end

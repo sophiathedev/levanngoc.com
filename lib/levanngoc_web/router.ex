@@ -27,6 +27,8 @@ defmodule LevanngocWeb.Router do
       live "/check_url_index", CheckUrlIndexLive.Index, :index
       live "/check_all_in_title", CheckAllInTitleLive.Index, :index
       live "/check_keyword_ranking", CheckKeywordRankingLive.Index, :index
+      live "/keyword_grouping", KeywordGroupingLive.Index, :index
+      live "/check_duplicate_content", CheckDuplicateContentLive.Index, :index
     end
   end
 
