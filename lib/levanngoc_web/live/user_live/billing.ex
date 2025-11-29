@@ -146,6 +146,44 @@ defmodule LevanngocWeb.UserLive.Billing do
     {:noreply, socket}
   end
 
+  def handle_event("create_order", _, socket) do
+    plan = socket.assigns.selected_plan
+    months = socket.assigns.months
+    user = socket.assigns.current_user
+    total_price = Decimal.mult(plan.price, months)
+
+    # Generate invoice_number
+    invoice_number = "INV_#{DateTime.utc_now() |> DateTime.to_unix()}"
+
+    # Calculate billing_ended_at
+    billing_ended_at = DateHelper.shift_months(DateTime.utc_now(), months)
+
+    billing_history_params = %{
+      user_id: user.id,
+      total_pricing: total_price,
+      billing_ended_at: billing_ended_at,
+      status: :pending,
+      is_current: false,
+      invoice_number: invoice_number,
+      tokens_per_month: plan.token_amount_provide,
+      billing_price_id: plan.id
+    }
+
+    case Billing.create_billing_history(billing_history_params) do
+      {:ok, _billing_history} ->
+        # Re-build params with the generated invoice_number
+        sepay_params = build_sepay_params(plan, months, user, invoice_number)
+
+        {:noreply,
+         socket
+         |> assign(:sepay_params, sepay_params)
+         |> push_event("submit_sepay_form", %{id: "sepay-form"})}
+
+      {:error, _changeset} ->
+        {:noreply, put_flash(socket, :error, "Có lỗi xảy ra khi tạo đơn hàng. Vui lòng thử lại.")}
+    end
+  end
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -382,44 +420,6 @@ defmodule LevanngocWeb.UserLive.Billing do
       <% end %>
     </div>
     """
-  end
-
-  def handle_event("create_order", _, socket) do
-    plan = socket.assigns.selected_plan
-    months = socket.assigns.months
-    user = socket.assigns.current_user
-    total_price = Decimal.mult(plan.price, months)
-
-    # Generate invoice_number
-    invoice_number = "INV_#{DateTime.utc_now() |> DateTime.to_unix()}"
-
-    # Calculate billing_ended_at
-    billing_ended_at = DateHelper.shift_months(DateTime.utc_now(), months)
-
-    billing_history_params = %{
-      user_id: user.id,
-      total_pricing: total_price,
-      billing_ended_at: billing_ended_at,
-      status: :pending,
-      is_current: false,
-      invoice_number: invoice_number,
-      tokens_per_month: plan.token_amount_provide,
-      billing_price_id: plan.id
-    }
-
-    case Billing.create_billing_history(billing_history_params) do
-      {:ok, _billing_history} ->
-        # Re-build params with the generated invoice_number
-        sepay_params = build_sepay_params(plan, months, user, invoice_number)
-
-        {:noreply,
-         socket
-         |> assign(:sepay_params, sepay_params)
-         |> push_event("submit_sepay_form", %{id: "sepay-form"})}
-
-      {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, "Có lỗi xảy ra khi tạo đơn hàng. Vui lòng thử lại.")}
-    end
   end
 
   defp format_price(price) do
