@@ -10,8 +10,20 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
+    # Safely get user from current_scope
+    user =
+      case socket.assigns do
+        %{current_scope: %{user: user}} -> user
+        _ -> nil
+      end
+
+    # Check if user is logged in
+    is_logged_in = user != nil
+
     {:ok,
      socket
+     |> assign(:is_logged_in, is_logged_in)
+     |> assign(:show_login_required_modal, !is_logged_in)
      |> assign(:uploaded_files, [])
      |> assign(:is_processing, false)
      |> assign(:timer_text, "00:00:00.0")
@@ -145,6 +157,11 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
   @impl true
   def handle_event("close_modal", _params, socket) do
     {:noreply, assign(socket, :show_result_modal, false)}
+  end
+
+  @impl true
+  def handle_event("close_login_modal", _params, socket) do
+    {:noreply, assign(socket, :show_login_required_modal, false)}
   end
 
   @impl true
@@ -373,7 +390,7 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
                   placeholder="keyword1&#10;keyword2&#10;keyword3"
                   phx-change="update_manual_keywords"
                   name="keywords"
-                  disabled={@is_processing}
+                  disabled={!@is_logged_in or @is_processing}
                 >{@manual_keywords}</textarea>
               </div>
             <% else %>
@@ -385,7 +402,7 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
                 <div class="flex items-center justify-center w-full flex-1" phx-drop-target={@uploads.file.ref}>
                   <label
                     for={@uploads.file.ref}
-                    class={"flex flex-col items-center justify-center w-full h-full border-2 border-dashed rounded-lg cursor-pointer bg-base-50 hover:bg-base-200 border-base-300 relative #{if @is_processing, do: "opacity-50 pointer-events-none", else: ""}"}
+                    class={"flex flex-col items-center justify-center w-full h-full border-2 border-dashed rounded-lg cursor-pointer bg-base-50 hover:bg-base-200 border-base-300 relative #{if !@is_logged_in or @is_processing, do: "opacity-50 pointer-events-none", else: ""}"}
                   >
                     <%= if @uploads.file.entries == [] do %>
                       <div class="flex flex-col items-center justify-center pt-5 pb-6">
@@ -440,7 +457,7 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
                         </div>
                       <% end %>
                     <% end %>
-                    <.live_file_input upload={@uploads.file} class="hidden" disabled={@is_processing} />
+                    <.live_file_input upload={@uploads.file} class="hidden" disabled={!@is_logged_in or @is_processing} />
                   </label>
                 </div>
               </div>
@@ -459,7 +476,7 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
                 type="button"
                 class="btn btn-info text-white"
                 phx-click="toggle_edit_mode"
-                disabled={@is_processing}
+                disabled={!@is_logged_in or @is_processing}
               >
                 <%= if @is_edit_mode do %>
                   File Mode
@@ -470,7 +487,7 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
               <button
                 type="submit"
                 class="btn btn-primary min-w-[160px]"
-                disabled={(@uploads.file.entries == [] and !@is_edit_mode) or (@is_edit_mode and @manual_keywords == "") or @is_processing}
+                disabled={!@is_logged_in or (@uploads.file.entries == [] and !@is_edit_mode) or (@is_edit_mode and @manual_keywords == "") or @is_processing}
               >
                 <%= if @is_processing do %>
                   {@timer_text}
@@ -723,6 +740,37 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
             <% end %>
           </div>
         </div>
+      </div>
+    <% end %>
+
+    <%= if @show_login_required_modal do %>
+      <div class="modal modal-open">
+        <div class="modal-box relative z-50">
+          <h3 class="font-bold text-lg mb-4">Yêu cầu đăng nhập</h3>
+          <div class="py-4">
+            <div class="flex justify-center mb-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-16 w-16 text-warning"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </div>
+            <p class="text-center text-base-content">
+              Bạn cần đăng nhập để sử dụng chức năng này.
+            </p>
+          </div>
+          <div class="modal-action justify-center">
+            <button class="btn btn-primary" phx-click="close_login_modal">Tôi đã hiểu</button>
+          </div>
+        </div>
+        <div class="modal-backdrop backdrop-blur-sm bg-black/30"></div>
       </div>
     <% end %>
     """

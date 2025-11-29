@@ -9,27 +9,56 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    user = socket.assigns.current_scope.user
+    # Safely get user from current_scope
+    user =
+      case socket.assigns do
+        %{current_scope: %{user: user}} -> user
+        _ -> nil
+      end
+
+    # Check if user is logged in
+    is_logged_in = user != nil
+
     page = 1
     per_page = 10
 
-    pagination =
-      KeywordCheckings.list_keyword_checkings_paginated(user.id, page: page, per_page: per_page)
+    {pagination, token_usage_per_check, total_token_usage} =
+      if is_logged_in do
+        pagination =
+          KeywordCheckings.list_keyword_checkings_paginated(user.id,
+            page: page,
+            per_page: per_page
+          )
 
-    # Get admin settings for token usage
-    admin_setting = Repo.all(AdminSetting) |> List.first()
+        # Get admin settings for token usage
+        admin_setting = Repo.all(AdminSetting) |> List.first()
 
-    token_usage_per_check =
-      case admin_setting do
-        %AdminSetting{token_usage_keyword_ranking: usage} when is_integer(usage) -> usage
-        _ -> 0
+        token_usage_per_check =
+          case admin_setting do
+            %AdminSetting{token_usage_keyword_ranking: usage} when is_integer(usage) -> usage
+            _ -> 0
+          end
+
+        total_token_usage = pagination.total_entries * token_usage_per_check
+        {pagination, token_usage_per_check, total_token_usage}
+      else
+        # Default values for non-logged-in users
+        default_pagination = %{
+          entries: [],
+          page: page,
+          per_page: per_page,
+          total_entries: 0,
+          total_pages: 0
+        }
+
+        {default_pagination, 0, 0}
       end
-
-    total_token_usage = pagination.total_entries * token_usage_per_check
 
     {:ok,
      socket
      |> assign(:page_title, "Kiểm tra thứ hạng từ khóa")
+     |> assign(:is_logged_in, is_logged_in)
+     |> assign(:show_login_required_modal, !is_logged_in)
      |> assign(:keyword_checkings, pagination.entries)
      |> assign(:page, pagination.page)
      |> assign(:per_page, pagination.per_page)
@@ -302,6 +331,10 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
     {:noreply, assign(socket, :show_result_modal, false)}
   end
 
+  def handle_event("close_login_modal", _params, socket) do
+    {:noreply, assign(socket, :show_login_required_modal, false)}
+  end
+
   def handle_event("download", %{"type" => type, "format" => format}, socket) do
     # Filter results based on type
     filtered_results =
@@ -473,10 +506,14 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="w-full h-full px-4 py-4 flex flex-col gap-4">
-      <div class="flex justify-between items-center">
+    <div class="w-full h-full px-4 flex flex-col gap-4">
+      <div class="flex justify-between items-center mb-2">
         <h1 class="text-3xl font-bold">{@page_title}</h1>
-        <button class="btn btn-primary" phx-click="open_create_modal" disabled={@is_processing}>
+        <button
+          class="btn btn-primary"
+          phx-click="open_create_modal"
+          disabled={!@is_logged_in or @is_processing}
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             class="h-5 w-5 mr-2"
@@ -560,7 +597,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
                               phx-click="open_edit_modal"
                               phx-value-id={keyword.id}
                               title="Sửa"
-                              disabled={@is_processing}
+                              disabled={!@is_logged_in or @is_processing}
                             >
                               <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -577,7 +614,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
                               phx-value-id={keyword.id}
                               data-confirm="Bạn có chắc chắn muốn xóa từ khóa này?"
                               title="Xóa"
-                              disabled={@is_processing}
+                              disabled={!@is_logged_in or @is_processing}
                             >
                               <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -618,7 +655,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
                       class="join-item btn btn-sm"
                       phx-click="change_page"
                       phx-value-page={@page - 1}
-                      disabled={@page == 1 or @is_processing}
+                      disabled={!@is_logged_in or @page == 1 or @is_processing}
                     >
                       «
                     </button>
@@ -631,7 +668,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
                           class={"join-item btn btn-sm #{if page_num == @page, do: "btn-active"}"}
                           phx-click="change_page"
                           phx-value-page={page_num}
-                          disabled={@is_processing}
+                          disabled={!@is_logged_in or @is_processing}
                         >
                           {page_num}
                         </button>
@@ -642,7 +679,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
                       class="join-item btn btn-sm"
                       phx-click="change_page"
                       phx-value-page={@page + 1}
-                      disabled={@page == @total_pages or @is_processing}
+                      disabled={!@is_logged_in or @page == @total_pages or @is_processing}
                     >
                       »
                     </button>
@@ -759,6 +796,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
                     class="btn btn-ghost btn-xs btn-square"
                     phx-click="toggle_edit_time"
                     title="Sửa thời gian"
+                    disabled={!@is_logged_in}
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -773,7 +811,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
               </div>
             </div>
             <div class="flex justify-end gap-2 mt-4">
-              <button class="btn btn-secondary btn-md" disabled={@is_processing}>
+              <button class="btn btn-secondary btn-md" disabled={!@is_logged_in or @is_processing}>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   class="h-5 w-5 mr-1"
@@ -789,7 +827,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
               <button
                 class="btn btn-primary btn-md"
                 phx-click="check_now"
-                disabled={@total_entries == 0 or @is_processing}
+                disabled={!@is_logged_in or @total_entries == 0 or @is_processing}
               >
                 <%= if @is_processing do %>
                   {@timer_text}
@@ -1112,6 +1150,37 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
               <button class="btn btn-primary" phx-click="close_result_modal">Đóng</button>
             </div>
           </div>
+        </div>
+      <% end %>
+
+      <%= if @show_login_required_modal do %>
+        <div class="modal modal-open">
+          <div class="modal-box relative z-50">
+            <h3 class="font-bold text-lg mb-4">Yêu cầu đăng nhập</h3>
+            <div class="py-4">
+              <div class="flex justify-center mb-4">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-16 w-16 text-warning"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+              </div>
+              <p class="text-center text-base-content">
+                Bạn cần đăng nhập để sử dụng chức năng này.
+              </p>
+            </div>
+            <div class="modal-action justify-center">
+              <button class="btn btn-primary" phx-click="close_login_modal">Tôi đã hiểu</button>
+            </div>
+          </div>
+          <div class="modal-backdrop backdrop-blur-sm bg-black/30"></div>
         </div>
       <% end %>
     </div>
