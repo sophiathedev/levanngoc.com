@@ -7,11 +7,11 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
   @impl true
   def mount(_params, _session, socket) do
     settings = get_settings()
-    token_url_index_value = if settings, do: settings.token_usage_check_url_index || 1, else: 1
-    token_allintitle_value = if settings, do: settings.token_usage_check_allintitle || 1, else: 1
+    token_url_index_value = if settings, do: settings.token_usage_check_url_index || 0, else: 0
+    token_allintitle_value = if settings, do: settings.token_usage_check_allintitle || 0, else: 0
 
     token_keyword_ranking_value =
-      if settings, do: settings.token_usage_keyword_ranking || 1, else: 1
+      if settings, do: settings.token_usage_keyword_ranking || 0, else: 0
 
     socket =
       socket
@@ -35,7 +35,7 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
   def handle_event("cancel_url_index", _params, socket) do
     # Reset to the saved value from database
     settings = socket.assigns.settings
-    saved_value = if settings, do: settings.token_usage_check_url_index || 1, else: 1
+    saved_value = if settings, do: settings.token_usage_check_url_index || 0, else: 0
 
     {:noreply,
      socket
@@ -53,7 +53,7 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
             fresh_settings = get_settings()
 
             new_value =
-              if fresh_settings, do: fresh_settings.token_usage_check_url_index || 1, else: 1
+              if fresh_settings, do: fresh_settings.token_usage_check_url_index || 0, else: 0
 
             {:noreply,
              socket
@@ -81,7 +81,7 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
   def handle_event("cancel_allintitle", _params, socket) do
     # Reset to the saved value from database
     settings = socket.assigns.settings
-    saved_value = if settings, do: settings.token_usage_check_allintitle || 1, else: 1
+    saved_value = if settings, do: settings.token_usage_check_allintitle || 0, else: 0
 
     {:noreply,
      socket
@@ -99,7 +99,7 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
             fresh_settings = get_settings()
 
             new_value =
-              if fresh_settings, do: fresh_settings.token_usage_check_allintitle || 1, else: 1
+              if fresh_settings, do: fresh_settings.token_usage_check_allintitle || 0, else: 0
 
             {:noreply,
              socket
@@ -127,7 +127,7 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
   def handle_event("cancel_keyword_ranking", _params, socket) do
     # Reset to the saved value from database
     settings = socket.assigns.settings
-    saved_value = if settings, do: settings.token_usage_keyword_ranking || 1, else: 1
+    saved_value = if settings, do: settings.token_usage_keyword_ranking || 0, else: 0
 
     {:noreply,
      socket
@@ -145,7 +145,7 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
             fresh_settings = get_settings()
 
             new_value =
-              if fresh_settings, do: fresh_settings.token_usage_keyword_ranking || 1, else: 1
+              if fresh_settings, do: fresh_settings.token_usage_keyword_ranking || 0, else: 0
 
             {:noreply,
              socket

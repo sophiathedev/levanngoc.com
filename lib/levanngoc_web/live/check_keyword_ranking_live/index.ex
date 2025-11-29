@@ -998,7 +998,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
 
       <%= if @show_result_modal and @result_stats do %>
         <div class="modal modal-open">
-          <div class="modal-box max-w-2xl">
+          <div class="modal-box max-w-2xl relative z-50">
             <h3 class="font-bold text-lg mb-4">Kết quả kiểm tra thứ hạng</h3>
 
             <div class="space-y-4">
@@ -1150,6 +1150,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
               <button class="btn btn-primary" phx-click="close_result_modal">Đóng</button>
             </div>
           </div>
+          <div class="modal-backdrop backdrop-blur-sm bg-black/30"></div>
         </div>
       <% end %>
 

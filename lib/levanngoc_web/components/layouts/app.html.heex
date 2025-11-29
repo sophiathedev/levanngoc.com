@@ -53,17 +53,17 @@
                 </li>
                 <hr class="my-1" />
               <% end %>
+              <%= if Levanngoc.Accounts.User.superuser?(@current_scope.user) do %>
+                <li>
+                  <.link href={~p"/admin"}>Quản trị</.link>
+                </li>
+              <% end %>
               <li>
                 <.link href={~p"/users/settings"}>Cài đặt</.link>
               </li>
               <li>
                 <.link href={~p"/users/billing"}>Gói & Thanh toán</.link>
               </li>
-              <%= if Levanngoc.Accounts.User.superuser?(@current_scope.user) do %>
-                <li>
-                  <.link href={~p"/admin"}>Quản trị</.link>
-                </li>
-              <% end %>
               <hr class="my-1" />
               <li>
                 <.link href={~p"/users/log-out"} method="delete">Đăng xuất</.link>

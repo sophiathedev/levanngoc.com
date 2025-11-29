@@ -33,7 +33,12 @@ defmodule Levanngoc.Application do
       # {Levanngoc.Worker, arg},
       # Start to serve requests, typically the last entry
       LevanngocWeb.Endpoint,
-      {Task, fn -> ensure_default_free_plan() end}
+      Supervisor.child_spec({Task, fn -> ensure_default_free_plan() end},
+        id: :ensure_free_plan_task
+      ),
+      Supervisor.child_spec({Task, fn -> ensure_default_admin_setting() end},
+        id: :ensure_admin_setting_task
+      )
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
@@ -44,7 +49,6 @@ defmodule Levanngoc.Application do
 
   # Create a default free plan if none exists
   defp ensure_default_free_plan do
-    # Wait a bit for the database to be ready
     Process.sleep(2000)
 
     try do
@@ -74,6 +78,40 @@ defmodule Levanngoc.Application do
     rescue
       e ->
         IO.puts("Error creating default free plan: #{inspect(e)}")
+    end
+  end
+
+  # Create a default admin setting record if none exists
+  defp ensure_default_admin_setting do
+    # Wait a bit for the database to be ready
+    Process.sleep(2000)
+
+    alias Levanngoc.Settings.AdminSetting
+    alias Levanngoc.Repo
+
+    try do
+      case Repo.all(AdminSetting) |> List.first() do
+        nil ->
+          case %AdminSetting{}
+               |> AdminSetting.changeset(%{})
+               |> Repo.insert() do
+            {:error, changeset} ->
+              IO.puts("Failed to create default admin setting:")
+
+              Enum.each(changeset.errors, fn {field, {message, _opts}} ->
+                IO.puts("- #{field}: #{message}")
+              end)
+
+            _ ->
+              nil
+          end
+
+        _ ->
+          nil
+      end
+    rescue
+      e ->
+        IO.puts("Error creating default admin setting: #{inspect(e)}")
     end
   end
 

@@ -503,7 +503,7 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
 
     <%= if @show_result_modal do %>
       <div class="modal modal-open">
-        <div class="modal-box">
+        <div class="modal-box relative z-50">
           <h3 class="font-bold text-lg mb-4">Kết quả kiểm tra</h3>
 
           <div class="space-y-4">
@@ -645,6 +645,7 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
             <button class="btn" phx-click="close_modal">Đóng</button>
           </div>
         </div>
+        <div class="modal-backdrop backdrop-blur-sm bg-black/30"></div>
       </div>
     <% end %>
 
