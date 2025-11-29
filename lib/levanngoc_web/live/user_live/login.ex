@@ -1,8 +1,6 @@
 defmodule LevanngocWeb.UserLive.Login do
   use LevanngocWeb, :live_view
 
-  alias Levanngoc.Accounts
-
   @impl true
   def render(assigns) do
     ~H"""
