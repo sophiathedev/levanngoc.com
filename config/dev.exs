@@ -88,11 +88,10 @@ config :phoenix_live_view,
 config :swoosh, :api_client, Swoosh.ApiClient.Req
 
 config :logger,
-  level: :info,
-  backends: [:console, {LoggerFileBackend, :file_log}]
+  level: :debug
 
 config :logger, :file_log,
   path: "production.log",
-  level: :info,
+  level: :debug,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]

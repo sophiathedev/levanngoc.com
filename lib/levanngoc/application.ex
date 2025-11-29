@@ -13,6 +13,17 @@ defmodule Levanngoc.Application do
       max_connections: 50
     )
 
+    # Add LoggerFileBackend for file logging
+    :logger.add_handler(:file_log, LoggerFileBackend, %{
+      config: %{
+        path: Application.get_env(:logger, :file_log)[:path] || "production.log",
+        level: Application.get_env(:logger, :file_log)[:level] || :info,
+        format:
+          Application.get_env(:logger, :file_log)[:format] || "$time $metadata[$level] $message\n",
+        metadata: Application.get_env(:logger, :file_log)[:metadata] || [:request_id]
+      }
+    })
+
     children = [
       LevanngocWeb.Telemetry,
       Levanngoc.Repo,
@@ -46,15 +57,15 @@ defmodule Levanngoc.Application do
           }
 
           case Levanngoc.Billing.create_billing_price(free_plan_attrs) do
-            {:ok, plan} ->
-              IO.puts("Successfully created default free plan with ID: #{plan.id}")
-
             {:error, changeset} ->
               IO.puts("Failed to create default free plan:")
 
               Enum.each(changeset.errors, fn {field, {message, _opts}} ->
                 IO.puts("- #{field}: #{message}")
               end)
+
+            _ ->
+              nil
           end
 
         _ ->

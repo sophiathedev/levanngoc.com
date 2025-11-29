@@ -18,11 +18,10 @@ config :swoosh, local: false
 
 # Do not print debug messages in production
 config :logger,
-  level: :info,
-  backends: [:console, {LoggerFileBackend, :file_log}]
+  level: :info
 
 config :logger, :file_log,
-  path: "production.log",
+  path: "development.log",
   level: :info,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]
