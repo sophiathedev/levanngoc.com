@@ -42,7 +42,8 @@ defmodule LevanngocWeb.UserLive.Registration do
   @impl true
   def mount(_params, _session, %{assigns: %{current_scope: %{user: user}}} = socket)
       when not is_nil(user) do
-    {:ok, redirect(socket, to: LevanngocWeb.UserAuth.signed_in_path(socket))}
+    # User is already authenticated, redirect to home
+    {:ok, push_navigate(socket, to: "/")}
   end
 
   def mount(_params, _session, socket) do
@@ -53,8 +54,21 @@ defmodule LevanngocWeb.UserLive.Registration do
 
   @impl true
   def handle_event("save", %{"user" => user_params}, socket) do
-    case Accounts.register_user(user_params) do
-      {:ok, _} ->
+    # Generate a random password
+    generated_password = generate_password()
+
+    # Add the generated password to user params
+    user_params_with_password = Map.merge(user_params, %{
+      "password" => generated_password,
+      "password_confirmation" => generated_password
+    })
+
+    case Accounts.register_user(user_params_with_password) do
+      {:ok, _user} ->
+        # Send email with the generated password
+        email = user_params["email"]
+        Levanngoc.Accounts.UserNotifier.deliver_generated_password(email, generated_password)
+
         {:noreply,
          socket
          |> put_flash(
@@ -71,6 +85,16 @@ defmodule LevanngocWeb.UserLive.Registration do
   def handle_event("validate", %{"user" => user_params}, socket) do
     changeset = Accounts.change_user_registration(%User{}, user_params)
     {:noreply, assign_form(socket, Map.put(changeset, :action, :validate))}
+  end
+
+  defp generate_password do
+    # Generate a random 12-character password with letters and numbers
+    chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    length = 12
+
+    for _ <- 1..length, into: "" do
+      <<Enum.random(String.to_charlist(chars))>>
+    end
   end
 
   defp assign_form(socket, %Ecto.Changeset{} = changeset) do

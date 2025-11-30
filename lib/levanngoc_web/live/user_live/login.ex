@@ -54,6 +54,11 @@ defmodule LevanngocWeb.UserLive.Login do
           label="Mật khẩu"
           autocomplete="current-password"
         />
+        <div class="text-right -mt-2 mb-2">
+          <.link navigate={~p"/users/forgot-password"} class="text-sm text-primary underline">
+            Quên mật khẩu?
+          </.link>
+        </div>
         <.button class="btn btn-primary w-full" name={@form[:remember_me].name} value="true">
           Đăng nhập và giữ đăng nhập <span aria-hidden="true">→</span>
         </.button>
@@ -66,6 +71,12 @@ defmodule LevanngocWeb.UserLive.Login do
   end
 
   @impl true
+  def mount(_params, _session, %{assigns: %{current_scope: %{user: user}}} = socket)
+      when not is_nil(user) do
+    # User is already authenticated, redirect to home
+    {:ok, push_navigate(socket, to: "/")}
+  end
+
   def mount(_params, _session, socket) do
     email =
       Phoenix.Flash.get(socket.assigns.flash, :email) ||

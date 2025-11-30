@@ -3,7 +3,8 @@ defmodule Levanngoc.Accounts.UserNotifier do
 
   alias Levanngoc.Mailer
   alias Levanngoc.Accounts.User
-  alias Levanngoc.Settings
+  alias Levanngoc.Repo
+  alias Levanngoc.EmailTemplate
 
   # Delivers the email using the application mailer.
   defp deliver(recipient, subject, body) do
@@ -14,9 +15,7 @@ defmodule Levanngoc.Accounts.UserNotifier do
       |> subject(subject)
       |> text_body(body)
 
-    config = get_mailer_config()
-
-    with {:ok, _metadata} <- Mailer.deliver(email, config) do
+    with {:ok, _metadata} <- Mailer.deliver(email) do
       {:ok, email}
     end
   end
@@ -29,21 +28,8 @@ defmodule Levanngoc.Accounts.UserNotifier do
       |> subject(subject)
       |> html_body(body)
 
-    config = get_mailer_config()
-
-    with {:ok, _metadata} <- Mailer.deliver(email, config) do
+    with {:ok, _metadata} <- Mailer.deliver(email) do
       {:ok, email}
-    end
-  end
-
-  defp get_mailer_config do
-    case Settings.get_admin_setting() do
-      %Settings.AdminSetting{mailgun_api_key: api_key, mailgun_domain: domain}
-      when is_binary(api_key) and is_binary(domain) ->
-        [api_key: api_key, domain: domain]
-
-      _ ->
-        []
     end
   end
 
@@ -134,5 +120,37 @@ defmodule Levanngoc.Accounts.UserNotifier do
       </body>
     </html>
     """)
+  end
+
+  @doc """
+  Deliver generated password to user email.
+  """
+  def deliver_generated_password(email, password) do
+    # Get the registration template from database or use default file template
+    template_id = EmailTemplate.template_id(:registration)
+    template = Repo.get_by(EmailTemplate, template_id: template_id)
+
+    {title, html_content} =
+      case template do
+        nil ->
+          # No template in database, use the default file template
+          template_path =
+            Path.join(:code.priv_dir(:levanngoc), "../template/registration_email.html")
+
+          {:ok, content} = File.read(template_path)
+          {"[levanngoc.com] Thông tin đăng nhập tài khoản", content}
+
+        %EmailTemplate{} = tmpl ->
+          # Use template from database
+          {tmpl.title, tmpl.content}
+      end
+
+    # Replace placeholders with actual values
+    html_body =
+      html_content
+      |> String.replace("<<[email]>>", email)
+      |> String.replace("<<[password]>>", password)
+
+    deliver_html(email, title, html_body)
   end
 end

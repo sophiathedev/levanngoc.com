@@ -271,11 +271,24 @@ defmodule Levanngoc.Accounts do
         """
 
       {%User{confirmed_at: nil} = user, _token} ->
-        user
-        |> User.confirm_changeset()
-        |> update_user_and_delete_all_tokens()
+        result =
+          user
+          |> User.confirm_changeset()
+          |> update_user_and_delete_all_tokens()
+
+        # Activate the user on magic link login
+        case result do
+          {:ok, {user, tokens}} ->
+            activate_user(user)
+            {:ok, {user, tokens}}
+
+          error ->
+            error
+        end
 
       {user, token} ->
+        # Activate the user on magic link login
+        activate_user(user)
         Repo.delete!(token)
         {:ok, {user, []}}
 
@@ -380,6 +393,15 @@ defmodule Levanngoc.Accounts do
   def deduct_user_tokens(%User{} = user, amount) when is_integer(amount) and amount >= 0 do
     user
     |> Ecto.Changeset.change(token_amount: user.token_amount - amount)
+    |> Repo.update()
+  end
+
+  @doc """
+  Activates a user by setting is_active to true.
+  """
+  def activate_user(%User{} = user) do
+    user
+    |> Ecto.Changeset.change(is_active: true)
     |> Repo.update()
   end
 end

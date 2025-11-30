@@ -136,10 +136,13 @@ defmodule LevanngocWeb.AdminLive.UserManagement do
                 </td>
                 <td>{number_to_delimited(user.token_amount, precision: 0)}</td>
                 <td>
-                  <%= if user.banned_at do %>
-                    <span class="badge badge-error">Đã cấm</span>
-                  <% else %>
-                    <span class="badge badge-success">Hoạt động</span>
+                  <%= cond do %>
+                    <% user.banned_at != nil -> %>
+                      <span class="badge badge-error">Đã cấm</span>
+                    <% !user.is_active -> %>
+                      <span class="badge badge-warning">Không hoạt động</span>
+                    <% true -> %>
+                      <span class="badge badge-success">Hoạt động</span>
                   <% end %>
                 </td>
                 <td>
@@ -196,7 +199,7 @@ defmodule LevanngocWeb.AdminLive.UserManagement do
           <div class="modal-box">
             <h3 class="font-bold text-lg">Sửa Người dùng</h3>
             <.form for={@edit_form} phx-submit="save_user" class="space-y-4 py-4">
-              <div class="form-control">
+              <div class="form-control w-full">
                 <label class="label">
                   <span class="label-text">Vai trò</span>
                 </label>
@@ -204,15 +207,27 @@ defmodule LevanngocWeb.AdminLive.UserManagement do
                   field={@edit_form[:role]}
                   type="select"
                   options={[{"Người dùng", 0}, {"Superuser", 999_999}]}
-                  class="select select-bordered"
+                  class="select select-bordered w-full"
                 />
               </div>
 
-              <div class="form-control">
+              <div class="form-control w-full">
+                <label class="label">
+                  <span class="label-text">Trạng thái</span>
+                </label>
+                <.input
+                  field={@edit_form[:is_active]}
+                  type="select"
+                  options={[{"Không hoạt động", false}, {"Hoạt động", true}]}
+                  class="select select-bordered w-full"
+                />
+              </div>
+
+              <div class="form-control w-full">
                 <label class="label">
                   <span class="label-text">Số lượng Token</span>
                 </label>
-                <.input field={@edit_form[:token_amount]} type="number" class="input input-bordered" />
+                <.input field={@edit_form[:token_amount]} type="number" class="input input-bordered w-full" />
               </div>
 
               <div class="modal-action">

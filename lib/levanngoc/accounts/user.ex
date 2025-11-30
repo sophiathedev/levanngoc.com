@@ -13,6 +13,7 @@ defmodule Levanngoc.Accounts.User do
     field :role, :integer, default: 0
     field :banned_at, :utc_datetime
     field :token_amount, :integer, default: 0
+    field :is_active, :boolean, default: false
 
     belongs_to :billing_price, Levanngoc.Billing.BillingPrice
     has_many :billing_histories, Levanngoc.Billing.BillingHistory
@@ -125,11 +126,11 @@ defmodule Levanngoc.Accounts.User do
   end
 
   @doc """
-  A user changeset for admin updates (role, tokens, ban).
+  A user changeset for admin updates (role, tokens, ban, active status).
   """
   def admin_changeset(user, attrs) do
     user
-    |> cast(attrs, [:role, :token_amount, :banned_at])
+    |> cast(attrs, [:role, :token_amount, :banned_at, :is_active])
     |> validate_inclusion(:role, [0, 999_999])
   end
 
