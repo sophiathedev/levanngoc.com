@@ -214,8 +214,37 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
   end
 
   @impl true
+  def handle_event("download_example", %{"format" => format}, socket) do
+    # Generate example file content based on format
+    {content, filename, _content_type} =
+      case format do
+        "xlsx" ->
+          generate_example_xlsx()
+
+        "csv" ->
+          generate_example_csv()
+      end
+
+    {:noreply,
+     push_event(socket, "download-file", %{
+       content: Base.encode64(content),
+       filename: filename
+     })}
+  end
+
+  @impl true
   def handle_event("toggle_edit_mode", _params, socket) do
     {:noreply, assign(socket, :is_edit_mode, !socket.assigns.is_edit_mode)}
+  end
+
+  @impl true
+  def handle_event("switch_to_edit_mode", _params, socket) do
+    {:noreply, assign(socket, :is_edit_mode, true)}
+  end
+
+  @impl true
+  def handle_event("switch_to_file_mode", _params, socket) do
+    {:noreply, assign(socket, :is_edit_mode, false)}
   end
 
   @impl true
@@ -299,7 +328,7 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
     sheet =
       results
       |> Enum.map(fn result ->
-        [result.url, if(result.indexed, do: "true", else: "false")]
+        [result.url, if(result.indexed, do: "indexed", else: "noindex")]
       end)
       |> then(fn rows -> [["URL", "Status"] | rows] end)
 
@@ -342,12 +371,53 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
     rows =
       results
       |> Enum.map(fn result ->
-        status = if result.indexed, do: "true", else: "false"
+        status = if result.indexed, do: "indexed", else: "noindex"
         "\"#{result.url}\",\"#{status}\"\n"
       end)
       |> Enum.join()
 
     content = header <> rows
+
+    {content, filename, "text/csv"}
+  end
+
+  defp generate_example_xlsx do
+    filename = "url_check_example.xlsx"
+
+    # Create example data
+    example_urls = [
+      ["https://example.com/page1"],
+      ["https://example.com/page2"],
+      ["https://example.com/page3"],
+      ["https://example.com/page4"],
+      ["https://example.com/page5"]
+    ]
+
+    workbook = %Elixlsx.Workbook{
+      sheets: [
+        %Elixlsx.Sheet{
+          name: "URLs",
+          rows: example_urls
+        }
+      ]
+    }
+
+    {:ok, {_filename, content}} = Elixlsx.write_to_memory(workbook, filename)
+
+    {content, filename, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
+  end
+
+  defp generate_example_csv do
+    filename = "url_check_example.csv"
+
+    # Create example CSV content
+    content = """
+    https://example.com/page1
+    https://example.com/page2
+    https://example.com/page3
+    https://example.com/page4
+    https://example.com/page5
+    """
 
     {content, filename, "text/csv"}
   end
@@ -383,8 +453,34 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
       <h1 class="text-3xl font-bold mb-6">Kiểm tra URL Index</h1>
 
       <div class="card bg-base-100 shadow-xl mb-6 border border-base-300 flex-1">
-        <div class="card-body flex flex-col">
-          <form phx-change="validate" phx-submit="save" class="flex flex-col flex-1">
+        <div class="card-body flex flex-col p-0">
+          <!-- Tabs -->
+          <div role="tablist" class="tabs tabs-border mb-0">
+            <button
+              role="tab"
+              class={[
+                "tab",
+                (@is_edit_mode && "tab-active") || "opacity-60"
+              ]}
+              phx-click="switch_to_edit_mode"
+              disabled={!@is_logged_in or @is_processing}
+            >
+              Chế độ chỉnh sửa
+            </button>
+            <button
+              role="tab"
+              class={[
+                "tab",
+                (!@is_edit_mode && "tab-active") || "opacity-60"
+              ]}
+              phx-click="switch_to_file_mode"
+              disabled={!@is_logged_in or @is_processing}
+            >
+              Chế độ File
+            </button>
+          </div>
+
+          <form phx-change="validate" phx-submit="save" class="flex flex-col flex-1 p-4">
             <%= if @is_edit_mode do %>
               <div class="form-control w-full flex flex-col flex-1">
                 <label class="label mb-2">
@@ -484,18 +580,44 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
             <% end %>
 
             <div class="mt-4 flex justify-between items-center">
-              <button
-                type="button"
-                class="btn btn-info text-white"
-                phx-click="toggle_edit_mode"
-                disabled={!@is_logged_in or @is_processing}
-              >
-                <%= if @is_edit_mode do %>
-                  Chế độ File
-                <% else %>
-                  Chế độ chỉnh sửa
-                <% end %>
-              </button>
+              <%= if !@is_edit_mode do %>
+                <div class="dropdown dropdown-top">
+                  <label tabindex="0" class="btn btn-primary btn-soft">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke-width="1.5"
+                      stroke="currentColor"
+                      class="w-5 h-5 mr-2"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
+                      />
+                    </svg>
+                    Tải file mẫu
+                  </label>
+                  <ul
+                    tabindex="0"
+                    class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52 mb-2"
+                  >
+                    <li>
+                      <button type="button" phx-click="download_example" phx-value-format="xlsx">
+                        Tải xuống Excel (.xlsx)
+                      </button>
+                    </li>
+                    <li>
+                      <button type="button" phx-click="download_example" phx-value-format="csv">
+                        Tải xuống CSV (.csv)
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              <% else %>
+                <div></div>
+              <% end %>
               <button
                 type="submit"
                 class="btn btn-primary min-w-[160px]"
@@ -507,7 +629,11 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
                 <%= if @is_processing do %>
                   {@timer_text}
                 <% else %>
-                  Upload & Kiểm tra
+                  <%= if @is_edit_mode do %>
+                    Chỉnh sửa
+                  <% else %>
+                    Upload & Kiểm tra
+                  <% end %>
                 <% end %>
               </button>
             </div>
@@ -536,7 +662,7 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
               </div>
               <%= if @result_stats.total_urls > 0 do %>
                 <div class="dropdown dropdown-end">
-                  <label tabindex="0" class="btn btn-ghost btn-sm">
+                  <label tabindex="0" class="btn btn-ghost btn-sm btn-square">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
@@ -578,7 +704,7 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
               </div>
               <%= if @result_stats.indexed_count > 0 do %>
                 <div class="dropdown dropdown-end">
-                  <label tabindex="0" class="btn btn-ghost btn-sm">
+                  <label tabindex="0" class="btn btn-ghost btn-sm btn-square">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
@@ -620,7 +746,7 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
               </div>
               <%= if @result_stats.not_indexed_count > 0 do %>
                 <div class="dropdown dropdown-end">
-                  <label tabindex="0" class="btn btn-ghost btn-sm">
+                  <label tabindex="0" class="btn btn-ghost btn-sm btn-square">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"

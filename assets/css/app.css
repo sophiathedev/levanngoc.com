@@ -114,4 +114,12 @@
   .textarea {
     outline: none !important;
   }
+
+  .tab-active {
+    @apply text-primary;
+  }
+
+  .tab-active:hover {
+    @apply !text-primary;
+  }
 }
