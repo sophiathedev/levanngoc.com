@@ -25,7 +25,7 @@ config :elixir, :time_zone_database, Tz.TimeZoneDatabase
 config :levanngoc,
   ecto_repos: [Levanngoc.Repo],
   generators: [timestamp_type: :utc_datetime, binary_id: true],
-  success_url: "https://0fc0d1437721.ngrok-free.app/users/billing"
+  success_url: "https://levanngoc.com/users/billing"
 
 # Configures the endpoint
 config :levanngoc, LevanngocWeb.Endpoint,
