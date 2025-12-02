@@ -45,7 +45,7 @@ config :levanngoc, LevanngocWeb.Endpoint,
 #
 # For production it's recommended to configure a different adapter
 # at the `config/runtime.exs`.
-config :levanngoc, Levanngoc.Mailer, adapter: Swoosh.Adapters.Local
+config :levanngoc, Levanngoc.Mailer, adapter: Swoosh.Adapters.Mailgun
 
 # Configure esbuild (the version is required)
 config :esbuild,
