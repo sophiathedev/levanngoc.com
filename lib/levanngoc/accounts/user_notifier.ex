@@ -151,6 +151,44 @@ defmodule Levanngoc.Accounts.UserNotifier do
       |> String.replace("<<[email]>>", email)
       |> String.replace("<<[password]>>", password)
 
-    deliver_html(email, title, html_body)
+    # Replace placeholders in title as well
+    subject =
+      title
+      |> String.replace("<<[email]>>", email)
+      |> String.replace("<<[password]>>", password)
+
+    deliver_html(email, subject, html_body)
+  end
+
+  @doc """
+  Deliver password reset instructions to user email.
+  """
+  def deliver_reset_password_instructions(user, url) do
+    # Get the forgot_password template from database or use default file template
+    template_id = EmailTemplate.template_id(:forgot_password)
+    template = Repo.get_by(EmailTemplate, template_id: template_id)
+
+    {title, html_content} =
+      case template do
+        nil ->
+          # No template in database, use the default file template
+          template_path =
+            Path.join(:code.priv_dir(:levanngoc), "../template/forgot_password_email.html")
+
+          {:ok, content} = File.read(template_path)
+          {"[levanngoc.com] Đặt lại mật khẩu", content}
+
+        %EmailTemplate{} = tmpl ->
+          # Use template from database
+          {tmpl.title, tmpl.content}
+      end
+
+    # Replace placeholders with actual values
+    html_body = String.replace(html_content, "<<[reset_url]>>", url)
+
+    # Replace placeholders in title as well
+    subject = String.replace(title, "<<[reset_url]>>", url)
+
+    deliver_html(user.email, subject, html_body)
   end
 end

@@ -106,6 +106,13 @@ defmodule LevanngocWeb.Router do
       live "/users/forgot-password", UserLive.ForgotPassword, :new
     end
 
+    # Reset password - no layout
+    live_session :reset_password,
+      layout: false,
+      on_mount: [{LevanngocWeb.UserAuth, :mount_current_scope}] do
+      live "/users/reset-password/:token", UserLive.ResetPassword, :new
+    end
+
     post "/users/log-in", UserSessionController, :create
     delete "/users/log-out", UserSessionController, :delete
   end

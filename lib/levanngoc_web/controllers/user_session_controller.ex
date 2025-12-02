@@ -5,7 +5,7 @@ defmodule LevanngocWeb.UserSessionController do
   alias LevanngocWeb.UserAuth
 
   def create(conn, %{"_action" => "confirmed"} = params) do
-    create(conn, params, "User confirmed successfully.")
+    create(conn, params, "Xác nhận người dùng thành công.")
   end
 
   def create(conn, params) do
@@ -33,7 +33,7 @@ defmodule LevanngocWeb.UserSessionController do
 
       _ ->
         conn
-        |> put_flash(:error, "The link is invalid or it has expired.")
+        |> put_flash(:error, "Liên kết không hợp lệ hoặc đã hết hạn.")
         |> redirect(to: ~p"/users/log-in")
     end
   end
@@ -60,7 +60,7 @@ defmodule LevanngocWeb.UserSessionController do
 
       true ->
         conn
-        |> put_flash(:error, "Invalid email or password")
+        |> put_flash(:error, "Email hoặc mật khẩu không hợp lệ")
         |> put_flash(:email, String.slice(email, 0, 160))
         |> redirect(to: ~p"/users/log-in")
     end
@@ -76,12 +76,12 @@ defmodule LevanngocWeb.UserSessionController do
 
     conn
     |> put_session(:user_return_to, ~p"/users/settings")
-    |> create(params, "Password updated successfully!")
+    |> create(params, "Cập nhật mật khẩu thành công!")
   end
 
   def delete(conn, _params) do
     conn
-    |> put_flash(:info, "Logged out successfully.")
+    |> put_flash(:info, "Đăng xuất thành công.")
     |> UserAuth.log_out_user()
   end
 end

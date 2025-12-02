@@ -13,7 +13,13 @@ defmodule Levanngoc.EmailTemplate do
   end
 
   @template_types %{
-    0 => :registration
+    0 => :registration,
+    1 => :forgot_password
+  }
+
+  @template_fields %{
+    registration: [:email, :password],
+    forgot_password: [:reset_url]
   }
 
   @doc """
@@ -36,6 +42,18 @@ defmodule Levanngoc.EmailTemplate do
   Returns all template types.
   """
   def template_types, do: @template_types
+
+  @doc """
+  Returns the allowed fields for a given template type.
+  """
+  def template_fields(template_type) when is_atom(template_type) do
+    Map.get(@template_fields, template_type, [])
+  end
+
+  @doc """
+  Returns all template fields configuration.
+  """
+  def all_template_fields, do: @template_fields
 
   @doc false
   def changeset(email_template, attrs) do

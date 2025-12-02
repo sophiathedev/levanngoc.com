@@ -11,7 +11,9 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
      |> assign(:page_title, "Quản lý Email Templates")
      |> assign(:templates, load_templates())
      |> assign(:preview_modal_open, false)
-     |> assign(:preview_content, nil)}
+     |> assign(:preview_content, nil)
+     |> assign(:info_modal_open, false)
+     |> assign(:allowed_fields, [])}
   end
 
   @impl true
@@ -69,6 +71,7 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
     )
     # nil, :content, or :preview
     |> assign(:expanded_view, nil)
+    |> assign(:allowed_fields, EmailTemplate.template_fields(template_type))
   end
 
   @impl true
@@ -93,6 +96,14 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
      socket
      |> assign(:preview_modal_open, false)
      |> assign(:preview_content, nil)}
+  end
+
+  def handle_event("open_info", _params, socket) do
+    {:noreply, assign(socket, :info_modal_open, true)}
+  end
+
+  def handle_event("close_info", _params, socket) do
+    {:noreply, assign(socket, :info_modal_open, false)}
   end
 
   def handle_event("toggle_expand", %{"view" => view}, socket) do
@@ -155,102 +166,129 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
         <div class="flex justify-between items-center">
           <h1 class="text-2xl font-bold">Quản lý Email Templates</h1>
         </div>
-        
-    <!-- Email Templates Grid -->
-        <div class="grid grid-cols-5 gap-4">
-          <%= for template <- @templates do %>
-            <div class="card bg-base-100 shadow-xl aspect-square hover:shadow-2xl transition-shadow cursor-pointer">
-              <div class="card-body p-4 flex flex-col justify-between">
-                <div>
-                  <div class="flex items-center justify-between mb-2">
-                    <span class="badge badge-primary badge-sm">
-                      {template.type_label}
-                    </span>
+
+        <!-- Email Templates Table -->
+        <div class="overflow-x-auto">
+          <table class="table w-full">
+            <thead>
+              <tr>
+                <th>Loại Template</th>
+                <th>Tiêu đề</th>
+                <th>Trạng thái</th>
+                <th class="text-right">Hành động</th>
+              </tr>
+            </thead>
+            <tbody>
+              <%= for template <- @templates do %>
+                <tr class="hover">
+                  <td>
+                    <div class="flex items-center gap-2">
+                      <span class="badge badge-primary">
+                        {template.type_label}
+                      </span>
+                    </div>
+                  </td>
+                  <td>
                     <%= if template.exists do %>
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="h-4 w-4 text-success"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fill-rule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clip-rule="evenodd"
-                        />
-                      </svg>
+                      <span class="font-medium">{template.title}</span>
                     <% else %>
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="h-4 w-4 text-base-content/30"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                        />
-                      </svg>
+                      <span class="text-base-content/40 italic">Chưa cấu hình</span>
                     <% end %>
-                  </div>
-                  <h3 class="font-semibold text-sm mb-2 line-clamp-2">
-                    Email {String.downcase(template.type_label)}
-                  </h3>
-                </div>
-                <div class="flex gap-2 mt-auto">
-                  <button
-                    class="btn btn-sm btn-ghost flex-1"
-                    phx-click="open_preview"
-                    phx-value-template_id={template.template_id}
-                    disabled={!template.exists}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      class="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                      />
-                    </svg>
-                  </button>
-                  <.link
-                    navigate={~p"/admin/email-templates/#{template.type}"}
-                    class="btn btn-sm btn-ghost flex-1"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      class="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                      />
-                    </svg>
-                  </.link>
-                </div>
-              </div>
-            </div>
-          <% end %>
+                  </td>
+                  <td>
+                    <%= if template.exists do %>
+                      <div class="flex items-center gap-2">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="h-5 w-5 text-success"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            fill-rule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                            clip-rule="evenodd"
+                          />
+                        </svg>
+                        <span class="text-success font-medium">Đã cấu hình</span>
+                      </div>
+                    <% else %>
+                      <div class="flex items-center gap-2">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="h-5 w-5 text-warning"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                          />
+                        </svg>
+                        <span class="text-warning font-medium">Chưa cấu hình</span>
+                      </div>
+                    <% end %>
+                  </td>
+                  <td class="text-right">
+                    <div class="flex gap-2 justify-end">
+                      <button
+                        class="btn btn-sm btn-ghost"
+                        phx-click="open_preview"
+                        phx-value-template_id={template.template_id}
+                        disabled={!template.exists}
+                        title="Xem trước"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                          />
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                          />
+                        </svg>
+                      </button>
+                      <.link
+                        navigate={~p"/admin/email-templates/#{template.type}"}
+                        class="btn btn-sm btn-primary"
+                        title="Chỉnh sửa"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
+                        </svg>
+                        Chỉnh sửa
+                      </.link>
+                    </div>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
         </div>
       <% else %>
         <!-- Edit Template Page -->
@@ -277,7 +315,30 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
                 </svg>
                 Quay lại
               </.link>
-              <h1 class="text-2xl font-bold mt-2">Chỉnh sửa Email Template</h1>
+              <div class="flex items-center gap-2 mt-2">
+                <h1 class="text-2xl font-bold">Chỉnh sửa Email Template</h1>
+                <button
+                  type="button"
+                  phx-click="open_info"
+                  class="btn btn-circle btn-ghost btn-sm"
+                  title="Thông tin các trường cho phép"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5 text-info"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </button>
+              </div>
               <p class="text-base-content/60 mt-1">
                 <span class="badge badge-primary">{@template_data.type_label}</span>
                 <%= if @template_data.exists do %>
@@ -501,6 +562,96 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
           </div>
         </div>
       <% end %>
+
+    <!-- Info Modal -->
+      <%= if @info_modal_open do %>
+        <div class="fixed inset-0 z-50 overflow-y-auto">
+          <!-- Backdrop with blur -->
+          <div class="fixed inset-0 bg-black/50 backdrop-blur-sm" phx-click="close_info"></div>
+
+          <!-- Modal Content -->
+          <div class="flex min-h-full items-center justify-center p-4">
+            <div class="relative bg-base-100 rounded-lg shadow-xl w-full max-w-2xl">
+              <!-- Modal Header -->
+              <div class="flex justify-between items-center p-4 border-b border-base-300">
+                <h3 class="text-lg font-bold">Các trường cho phép</h3>
+                <button
+                  type="button"
+                  phx-click="close_info"
+                  class="btn btn-sm btn-ghost btn-circle"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <!-- Modal Body -->
+              <div class="p-6">
+                <p class="text-sm text-base-content/70 mb-4">
+                  Bạn có thể sử dụng các trường sau trong nội dung email của mình:
+                </p>
+                <table class="table w-full">
+                  <tbody>
+                    <%= for field <- @allowed_fields do %>
+                      <tr class="hover">
+                        <td class="w-32">
+                          <div class="badge badge-primary">
+                            <%= field %>
+                          </div>
+                        </td>
+                        <td>
+                          <p class="text-sm font-medium">
+                            <%= format_field_name(field) %>
+                          </p>
+                          <p class="text-xs text-base-content/60 mt-1">
+                            <%= format_field_description(field) %>
+                          </p>
+                        </td>
+                        <td class="w-40 text-right">
+                          <code class="text-xs bg-base-300 px-2 py-1 rounded">
+                            <%= "<<[#{field}]>>" %>
+                          </code>
+                        </td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+                <div class="mt-4 p-3 bg-info/10 rounded-lg">
+                  <p class="text-xs text-base-content/70">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-4 w-4 inline mr-1"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    Sử dụng cú pháp <code class="bg-base-300 px-1 rounded"><%= "<<[tên_trường]>>" %></code> để chèn giá trị động vào email.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
     </div>
     """
   end
@@ -552,6 +703,7 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
   defp format_type_label(type) do
     case type do
       :registration -> "đăng ký"
+      :forgot_password -> "quên mật khẩu"
       _ -> type |> to_string() |> String.capitalize()
     end
   end
@@ -566,5 +718,33 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
     end
   end
 
+  defp load_default_template(:forgot_password) do
+    # Load default forgot password template from file
+    template_path = Path.join(:code.priv_dir(:levanngoc), "../template/forgot_password_email.html")
+
+    case File.read(template_path) do
+      {:ok, content} -> content
+      {:error, _} -> ""
+    end
+  end
+
   defp load_default_template(_type), do: ""
+
+  defp format_field_name(field) do
+    case field do
+      :email -> "Email"
+      :password -> "Mật khẩu"
+      :reset_url -> "Liên kết đặt lại mật khẩu"
+      _ -> field |> to_string() |> String.capitalize()
+    end
+  end
+
+  defp format_field_description(field) do
+    case field do
+      :email -> "Địa chỉ email của người dùng"
+      :password -> "Mật khẩu của người dùng (chỉ hiển thị khi đăng ký)"
+      :reset_url -> "URL để người dùng đặt lại mật khẩu"
+      _ -> "Mô tả chưa có sẵn"
+    end
+  end
 end
