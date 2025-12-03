@@ -33,20 +33,20 @@
             tabindex="0"
             class="dropdown-content menu bg-base-100 rounded-box z-[1] w-64 p-2 shadow"
           >
-            <%
-              # Display current active billing plan or fall back to default billing_price
-              current_plan = if @current_scope.user.current_billing do
+            <% # Display current active billing plan or fall back to default billing_price
+            current_plan =
+              if @current_scope.user.current_billing do
                 @current_scope.user.current_billing.billing_price
               else
                 @current_scope.user.billing_price
-              end
-            %>
+              end %>
             <%= if current_plan do %>
               <li class="menu-title px-4 py-2">
                 <div class="flex flex-col gap-1">
                   <span class="text-xs text-base-content/60">Gói hiện tại</span>
                   <span class="text-sm font-semibold text-primary">
-                    <%= current_plan.name %> (<%= Number.Delimit.number_to_delimited(@current_scope.user.token_amount, precision: 0) %> tokens)
+                    {current_plan.name} ({Number.Delimit.number_to_delimited(
+                      @current_scope.user.token_amount, precision: 0)} tokens)
                   </span>
                 </div>
               </li>
@@ -71,7 +71,7 @@
     </header>
     <!-- Page content -->
     <main class="flex-1 p-4 lg:p-6">
-      <%= @inner_content %>
+      {@inner_content}
     </main>
 
     <.flash_group flash={@flash} />
@@ -121,7 +121,7 @@
                   d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              <span>Quản lý Pricing</span>
+              <span>Quản lý gói</span>
             </.link>
           </li>
           <li>

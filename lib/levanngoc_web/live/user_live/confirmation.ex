@@ -57,7 +57,10 @@ defmodule LevanngocWeb.UserLive.Confirmation do
           >
             Giữ tôi đăng nhập trên thiết bị này
           </.button>
-          <.button phx-disable-with="Đang đăng nhập..." class="btn btn-primary btn-soft w-full mt-2">
+          <.button
+            phx-disable-with="Đang đăng nhập..."
+            class="btn btn-primary btn-soft w-full mt-2"
+          >
             Chỉ đăng nhập lần này
           </.button>
         <% end %>

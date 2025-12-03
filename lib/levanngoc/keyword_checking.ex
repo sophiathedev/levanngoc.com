@@ -20,7 +20,11 @@ defmodule Levanngoc.KeywordChecking do
     |> normalize_url()
     |> validate_length(:keyword, max: 500)
     |> validate_length(:website_url, max: 1000)
-    |> validate_format(:website_url, ~r/^(https?:\/\/)?[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}([\/\w.-]*)*$/i, message: "must be a valid URL format")
+    |> validate_format(
+      :website_url,
+      ~r/^(https?:\/\/)?[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}([\/\w.-]*)*$/i,
+      message: "must be a valid URL format"
+    )
     |> assoc_constraint(:user)
   end
 

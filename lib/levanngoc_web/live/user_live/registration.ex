@@ -58,10 +58,11 @@ defmodule LevanngocWeb.UserLive.Registration do
     generated_password = generate_password()
 
     # Add the generated password to user params
-    user_params_with_password = Map.merge(user_params, %{
-      "password" => generated_password,
-      "password_confirmation" => generated_password
-    })
+    user_params_with_password =
+      Map.merge(user_params, %{
+        "password" => generated_password,
+        "password_confirmation" => generated_password
+      })
 
     case Accounts.register_user(user_params_with_password) do
       {:ok, _user} ->

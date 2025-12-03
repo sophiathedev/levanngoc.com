@@ -156,9 +156,7 @@ defmodule Mix.Tasks.CreateSuperuser do
   end
 
   defp handle_insert_result({:ok, user}, email) do
-    Mix.shell().info(
-      IO.ANSI.format([:green, "Tạo superuser thành công với email: #{email}"])
-    )
+    Mix.shell().info(IO.ANSI.format([:green, "Tạo superuser thành công với email: #{email}"]))
 
     Mix.shell().info(IO.ANSI.format([:green, "Vai trò người dùng: superuser (#{user.role})"]))
   end

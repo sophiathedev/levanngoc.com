@@ -221,8 +221,11 @@ defmodule Levanngoc.Accounts do
     query
     |> Repo.one()
     |> case do
-      {user, token_time} -> {Repo.preload(user, [:billing_price, current_billing: :billing_price]), token_time}
-      nil -> nil
+      {user, token_time} ->
+        {Repo.preload(user, [:billing_price, current_billing: :billing_price]), token_time}
+
+      nil ->
+        nil
     end
   end
 
@@ -271,24 +274,11 @@ defmodule Levanngoc.Accounts do
         """
 
       {%User{confirmed_at: nil} = user, _token} ->
-        result =
-          user
-          |> User.confirm_changeset()
-          |> update_user_and_delete_all_tokens()
-
-        # Activate the user on magic link login
-        case result do
-          {:ok, {user, tokens}} ->
-            activate_user(user)
-            {:ok, {user, tokens}}
-
-          error ->
-            error
-        end
+        user
+        |> User.confirm_changeset()
+        |> update_user_and_delete_all_tokens()
 
       {user, token} ->
-        # Activate the user on magic link login
-        activate_user(user)
         Repo.delete!(token)
         {:ok, {user, []}}
 
@@ -417,18 +407,39 @@ defmodule Levanngoc.Accounts do
       [%User{}, ...]
 
   """
-  def list_users(params \\ %{}) do
-    query = from(u in User, order_by: [desc: u.inserted_at])
+  def paginate_users(params \\ %{}) do
+    page = Map.get(params, "page", 1)
+    per_page = Map.get(params, "per_page", 10)
+    offset = (page - 1) * per_page
 
-    query =
-      if search = params["search"] do
+    # Query for filtering
+    filter_query = from(u in User)
+
+    filter_query =
+      if search = Map.get(params, "search") do
         search = "%#{search}%"
-        from(u in query, where: ilike(u.email, ^search))
+        from(u in filter_query, where: ilike(u.email, ^search))
       else
-        query
+        filter_query
       end
 
-    Repo.all(query)
+    total_count = Repo.one(from u in filter_query, select: count(u.id))
+
+    users =
+      filter_query
+      |> order_by(desc: :inserted_at)
+      |> limit(^per_page)
+      |> offset(^offset)
+      |> Repo.all()
+      |> Repo.preload([current_billing: :billing_price])
+
+    %{
+      users: users,
+      page: page,
+      per_page: per_page,
+      total_count: total_count,
+      total_pages: ceil(total_count / per_page) |> trunc()
+    }
   end
 
   @doc """
@@ -462,6 +473,16 @@ defmodule Levanngoc.Accounts do
   def activate_user(%User{} = user) do
     user
     |> Ecto.Changeset.change(is_active: true)
+    |> Repo.update()
+  end
+
+  @doc """
+  Updates a user's password by admin without requiring current password.
+  Does not expire existing sessions/tokens.
+  """
+  def update_user_password_admin(%User{} = user, attrs) do
+    user
+    |> User.admin_password_changeset(attrs)
     |> Repo.update()
   end
 end

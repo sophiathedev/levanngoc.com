@@ -65,7 +65,15 @@ defmodule Levanngoc.External.ScrapingDog do
   end
 
   def check_keyword_ranking(%__MODULE__{} = state, keyword, url) do
-    params = build_params(state, :check_keyword_ranking, keyword)
+    check_keyword_ranking_with_pagination(state, keyword, url, 0)
+  end
+
+  defp check_keyword_ranking_with_pagination(_state, _keyword, _url, page) when page > 10 do
+    nil
+  end
+
+  defp check_keyword_ranking_with_pagination(state, keyword, url, page) do
+    params = build_params(state, :check_keyword_ranking, keyword, page)
 
     query_string = URI.encode_query(params)
     full_url = "#{@check_index_url_endpoint}?#{query_string}"
@@ -76,12 +84,20 @@ defmodule Levanngoc.External.ScrapingDog do
           {:ok, data} ->
             organic_results = Map.get(data, "organic_results", [])
 
-            results =
+            result =
               Enum.find(organic_results, fn result ->
                 String.contains?(result["link"], url)
               end)
 
-            results["rank"]
+            dbg(organic_results)
+
+            case result do
+              nil ->
+                check_keyword_ranking_with_pagination(state, keyword, url, page + 1)
+
+              result ->
+                Map.get(result, "page_rank")
+            end
 
           {:error, reason} ->
             raise "Failed to parse JSON response: #{inspect(reason)}"
@@ -115,13 +131,14 @@ defmodule Levanngoc.External.ScrapingDog do
     }
   end
 
-  defp build_params(%__MODULE__{} = state, :check_keyword_ranking, keyword) do
+  defp build_params(%__MODULE__{} = state, :check_keyword_ranking, keyword, page \\ 0) do
     %{
       api_key: state.api_key,
       query: "#{keyword}",
       country: "vn",
       advance_search: "true",
-      domain: "google.com"
+      domain: "google.com",
+      page: page
     }
   end
 end

@@ -25,7 +25,7 @@ config :elixir, :time_zone_database, Tz.TimeZoneDatabase
 config :levanngoc,
   ecto_repos: [Levanngoc.Repo],
   generators: [timestamp_type: :utc_datetime, binary_id: true],
-  success_url: "https://levanngoc.com/users/billing"
+  success_url: "https://4f51a3b8d2d6.ngrok-free.app/users/billing"
 
 # Configures the endpoint
 config :levanngoc, LevanngocWeb.Endpoint,
@@ -45,7 +45,7 @@ config :levanngoc, LevanngocWeb.Endpoint,
 #
 # For production it's recommended to configure a different adapter
 # at the `config/runtime.exs`.
-config :levanngoc, Levanngoc.Mailer, adapter: Swoosh.Adapters.Mailgun
+config :levanngoc, Levanngoc.Mailer, adapter: Swoosh.Adapters.Local
 
 # Configure esbuild (the version is required)
 config :esbuild,

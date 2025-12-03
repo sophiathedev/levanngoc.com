@@ -247,22 +247,32 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
             fresh_settings = get_settings()
 
             new_value =
-              if fresh_settings, do: fresh_settings.token_usage_checking_duplicate_content || 0, else: 0
+              if fresh_settings,
+                do: fresh_settings.token_usage_checking_duplicate_content || 0,
+                else: 0
 
             {:noreply,
              socket
              |> assign(:settings, fresh_settings)
              |> assign(:token_usage_checking_duplicate_content, new_value)
              |> assign(:editing_checking_duplicate_content, false)
-             |> put_flash(:info, "Đã cập nhật lượng token sử dụng cho Kiểm tra trùng lặp nội dung")}
+             |> put_flash(
+               :info,
+               "Đã cập nhật lượng token sử dụng cho Kiểm tra trùng lặp nội dung"
+             )}
 
           {:error, _changeset} ->
-            {:noreply, put_flash(socket, :error, "Failed to save Token Usage Checking Duplicate Content")}
+            {:noreply,
+             put_flash(socket, :error, "Failed to save Token Usage Checking Duplicate Content")}
         end
 
       _ ->
         {:noreply,
-         put_flash(socket, :error, "Token Usage Checking Duplicate Content must be a positive integer")}
+         put_flash(
+           socket,
+           :error,
+           "Token Usage Checking Duplicate Content must be a positive integer"
+         )}
     end
   end
 
@@ -295,7 +305,7 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
         <p class="text-neutral-content mt-2">Cấu hình Token Usage Check URL Index</p>
       </div>
 
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto border border-base-300 rounded-lg shadow-lg bg-base-100">
         <table class="table table-zebra w-full">
           <thead>
             <tr>
@@ -741,7 +751,10 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
               </td>
               <td class="text-center">
                 <%= if @editing_checking_duplicate_content do %>
-                  <form id="token-checking-duplicate-content-form" phx-submit="save_checking_duplicate_content">
+                  <form
+                    id="token-checking-duplicate-content-form"
+                    phx-submit="save_checking_duplicate_content"
+                  >
                     <input
                       type="number"
                       name="token_value"

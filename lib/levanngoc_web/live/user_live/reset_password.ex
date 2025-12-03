@@ -15,7 +15,7 @@ defmodule LevanngocWeb.UserLive.ResetPassword do
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="csrf-token" content={get_csrf_token()} />
         <.live_title>
-          <%= assigns[:page_title] || "Đặt lại mật khẩu" %>
+          {assigns[:page_title] || "Đặt lại mật khẩu"}
         </.live_title>
         <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
         <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}>
@@ -64,7 +64,10 @@ defmodule LevanngocWeb.UserLive.ResetPassword do
               </.form>
 
               <div class="text-center mt-4">
-                <.link navigate={~p"/users/log-in"} class="text-sm font-semibold text-brand hover:underline">
+                <.link
+                  navigate={~p"/users/log-in"}
+                  class="text-sm font-semibold text-brand hover:underline"
+                >
                   Quay lại đăng nhập
                 </.link>
               </div>
@@ -95,7 +98,10 @@ defmodule LevanngocWeb.UserLive.ResetPassword do
               </div>
 
               <div class="text-center mt-4">
-                <.link navigate={~p"/users/log-in"} class="text-sm font-semibold text-brand hover:underline">
+                <.link
+                  navigate={~p"/users/log-in"}
+                  class="text-sm font-semibold text-brand hover:underline"
+                >
                   Quay lại đăng nhập
                 </.link>
               </div>

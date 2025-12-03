@@ -34,7 +34,7 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
      |> assign(:show_confirm_modal, false)
      |> assign(:cost_details, nil)
      |> assign(:result_stats, nil)
-     |> assign(:is_edit_mode, false)
+     |> assign(:is_edit_mode, true)
      |> assign(:manual_urls, "")
      |> allow_upload(:file, accept: ~w(.xlsx .csv), max_entries: 1, max_file_size: 32_000_000)}
   end

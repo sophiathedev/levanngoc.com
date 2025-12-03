@@ -113,6 +113,13 @@ defmodule LevanngocWeb.Router do
       live "/users/reset-password/:token", UserLive.ResetPassword, :new
     end
 
+    # Account activation - no layout
+    live_session :activation,
+      layout: false,
+      on_mount: [{LevanngocWeb.UserAuth, :mount_current_scope}] do
+      live "/users/activation", UserLive.Activation, :new
+    end
+
     post "/users/log-in", UserSessionController, :create
     delete "/users/log-out", UserSessionController, :delete
   end

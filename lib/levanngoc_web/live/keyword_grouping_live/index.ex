@@ -24,7 +24,7 @@ defmodule LevanngocWeb.KeywordGroupingLive.Index do
      |> assign(:timer_text, "00:00:00.0")
      |> assign(:start_time, nil)
      |> assign(:show_result_modal, false)
-     |> assign(:is_edit_mode, false)
+     |> assign(:is_edit_mode, true)
      |> assign(:project_name, "")
      |> assign(:keywords_input, "")
      |> allow_upload(:file, accept: ~w(.xlsx .csv), max_entries: 1, max_file_size: 32_000_000)}
@@ -93,8 +93,13 @@ defmodule LevanngocWeb.KeywordGroupingLive.Index do
   end
 
   @impl true
-  def handle_event("toggle_edit_mode", _params, socket) do
-    {:noreply, assign(socket, :is_edit_mode, !socket.assigns.is_edit_mode)}
+  def handle_event("switch_to_edit_mode", _params, socket) do
+    {:noreply, assign(socket, :is_edit_mode, true)}
+  end
+
+  @impl true
+  def handle_event("switch_to_file_mode", _params, socket) do
+    {:noreply, assign(socket, :is_edit_mode, false)}
   end
 
   @impl true
@@ -297,8 +302,36 @@ defmodule LevanngocWeb.KeywordGroupingLive.Index do
       <h1 class="text-3xl font-bold mb-6">Gom nhóm từ khóa</h1>
 
       <div class="card bg-base-100 shadow-xl mb-6 border border-base-300 flex-1">
-        <div class="card-body flex flex-col">
-          <form phx-change="validate" phx-submit="save" class="flex flex-col flex-1">
+        <div class="card-body flex flex-col p-0">
+          <!-- Tabs -->
+          <div role="tablist" class="tabs tabs-border mb-0">
+            <button
+              type="button"
+              role="tab"
+              class={[
+                "tab",
+                (@is_edit_mode && "tab-active") || "opacity-60"
+              ]}
+              phx-click="switch_to_edit_mode"
+              disabled={!@is_logged_in or @is_processing}
+            >
+              Chế độ chỉnh sửa
+            </button>
+            <button
+              type="button"
+              role="tab"
+              class={[
+                "tab",
+                (!@is_edit_mode && "tab-active") || "opacity-60"
+              ]}
+              phx-click="switch_to_file_mode"
+              disabled={!@is_logged_in or @is_processing}
+            >
+              Chế độ File
+            </button>
+          </div>
+
+          <form phx-change="validate" phx-submit="save" class="flex flex-col flex-1 p-4">
             <div class="form-control w-full mb-4">
               <label class="label mb-2">
                 <span class="label-text">Tên dự án</span>
@@ -314,131 +347,122 @@ defmodule LevanngocWeb.KeywordGroupingLive.Index do
               />
             </div>
 
-            <%= if @is_edit_mode do %>
-              <div class="form-control w-full flex flex-col flex-1">
-                <label class="label mb-2">
-                  <span class="label-text">
-                    Danh sách từ khóa để gom nhóm (mỗi từ khóa trên một dòng)
-                  </span>
-                </label>
-                <textarea
-                  id="keywords-input"
-                  class="w-full flex-1 textarea textarea-bordered rounded-lg"
-                  placeholder="Nhập từ khóa, mỗi từ khóa một dòng&#10;Ví dụ:&#10;seo tools&#10;keyword research&#10;backlink checker"
-                  phx-change="update_keywords"
-                  name="keywords"
-                  phx-hook="AutoResize"
-                  disabled={!@is_logged_in or @is_processing}
-                >{@keywords_input}</textarea>
-              </div>
-            <% else %>
-              <div class="form-control w-full flex flex-col flex-1">
-                <label class="label mb-2">
-                  <span class="label-text">Chọn file (xlsx, csv)</span>
-                </label>
+            <div class="flex flex-col flex-1">
+              <%= if @is_edit_mode do %>
+                <div class="form-control w-full flex flex-col flex-1">
+                  <label class="label mb-2">
+                    <span class="label-text">
+                      Danh sách từ khóa để gom nhóm (mỗi từ khóa trên một dòng)
+                    </span>
+                  </label>
+                  <textarea
+                    id="keywords-input"
+                    class="w-full flex-1 textarea textarea-bordered rounded-lg"
+                    placeholder="Nhập từ khóa, mỗi từ khóa một dòng&#10;Ví dụ:&#10;seo tools&#10;keyword research&#10;backlink checker"
+                    phx-change="update_keywords"
+                    name="keywords"
+                    phx-hook="AutoResize"
+                    disabled={!@is_logged_in or @is_processing}
+                  >{@keywords_input}</textarea>
+                </div>
+              <% else %>
+                <div class="form-control w-full flex flex-col flex-1">
+                  <label class="label mb-2">
+                    <span class="label-text">Chọn file (xlsx, csv)</span>
+                  </label>
 
-                <div
-                  class="flex items-center justify-center w-full flex-1"
-                  phx-drop-target={@uploads.file.ref}
-                >
-                  <label
-                    for={@uploads.file.ref}
-                    class={"flex flex-col items-center justify-center w-full h-full border-2 border-dashed rounded-lg cursor-pointer bg-base-50 hover:bg-base-200 border-base-300 relative #{if !@is_logged_in or @is_processing, do: "opacity-50 pointer-events-none", else: ""}"}
+                  <div
+                    class="flex items-center justify-center w-full flex-1"
+                    phx-drop-target={@uploads.file.ref}
                   >
-                    <%= if @uploads.file.entries == [] do %>
-                      <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                        <svg
-                          class="w-8 h-8 mb-4 text-base-content/50"
-                          aria-hidden="true"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 20 16"
-                        >
-                          <path
-                            stroke="currentColor"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"
-                          />
-                        </svg>
-                        <p class="mb-2 text-sm text-base-content/70">
-                          <span class="font-semibold">Click để upload</span> hoặc kéo thả
-                        </p>
-                        <p class="text-xs text-base-content/50">XLSX, CSV (Max 32MB)</p>
-                      </div>
-                    <% else %>
-                      <%= for entry <- @uploads.file.entries do %>
+                    <label
+                      for={@uploads.file.ref}
+                      class={"flex flex-col items-center justify-center w-full h-full border-2 border-dashed rounded-lg cursor-pointer bg-base-50 hover:bg-base-200 border-base-300 relative #{if !@is_logged_in or @is_processing, do: "opacity-50 pointer-events-none", else: ""}"}
+                    >
+                      <%= if @uploads.file.entries == [] do %>
                         <div class="flex flex-col items-center justify-center pt-5 pb-6">
                           <svg
+                            class="w-8 h-8 mb-4 text-base-content/50"
+                            aria-hidden="true"
                             xmlns="http://www.w3.org/2000/svg"
                             fill="none"
-                            viewBox="0 0 24 24"
-                            class="w-12 h-12 mb-4 text-success"
+                            viewBox="0 0 20 16"
                           >
                             <path
+                              stroke="currentColor"
                               stroke-linecap="round"
                               stroke-linejoin="round"
                               stroke-width="2"
-                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                              d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"
                             />
                           </svg>
-                          <p class="mb-2 text-lg font-semibold text-base-content">
-                            {entry.client_name}
+                          <p class="mb-2 text-sm text-base-content/70">
+                            <span class="font-semibold">Click để upload</span> hoặc kéo thả
                           </p>
-                          <p class="text-sm text-base-content/70">
-                            {humanize_size(entry.client_size)}
-                            <%= if entry.progress > 0 do %>
-                              - {entry.progress}%
-                            <% end %>
-                          </p>
-                          <p class="mt-4 text-xs text-base-content/50">
-                            Click hoặc kéo thả để thay thế file khác
-                          </p>
+                          <p class="text-xs text-base-content/50">XLSX, CSV (Max 32MB)</p>
                         </div>
+                      <% else %>
+                        <%= for entry <- @uploads.file.entries do %>
+                          <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              class="w-12 h-12 mb-4 text-success"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
+                            </svg>
+                            <p class="mb-2 text-lg font-semibold text-base-content">
+                              {entry.client_name}
+                            </p>
+                            <p class="text-sm text-base-content/70">
+                              {humanize_size(entry.client_size)}
+                              <%= if entry.progress > 0 do %>
+                                - {entry.progress}%
+                              <% end %>
+                            </p>
+                            <p class="mt-4 text-xs text-base-content/50">
+                              Click hoặc kéo thả để thay thế file khác
+                            </p>
+                          </div>
+                        <% end %>
                       <% end %>
-                    <% end %>
-                    <.live_file_input
-                      upload={@uploads.file}
-                      class="hidden"
-                      disabled={!@is_logged_in or @is_processing}
-                    />
-                  </label>
-                </div>
-              </div>
-            <% end %>
-
-            <%= for entry <- @uploads.file.entries do %>
-              <%= for err <- upload_errors(@uploads.file, entry) do %>
-                <div class="alert alert-error mt-2">
-                  <span>{error_to_string(err)}</span>
+                      <.live_file_input
+                        upload={@uploads.file}
+                        class="hidden"
+                        disabled={!@is_logged_in or @is_processing}
+                      />
+                    </label>
+                  </div>
                 </div>
               <% end %>
-            <% end %>
-            <div class="mt-4 flex justify-between items-center">
-              <button
-                type="button"
-                class="btn btn-info text-white"
-                phx-click="toggle_edit_mode"
-                disabled={!@is_logged_in or @is_processing}
-              >
-                <%= if @is_edit_mode do %>
-                  Chế độ File
-                <% else %>
-                  Chế độ chỉnh sửa
+
+              <%= for entry <- @uploads.file.entries do %>
+                <%= for err <- upload_errors(@uploads.file, entry) do %>
+                  <div class="alert alert-error mt-2">
+                    <span>{error_to_string(err)}</span>
+                  </div>
                 <% end %>
-              </button>
-              <button
-                type="submit"
-                class="btn btn-primary min-w-[160px]"
-                disabled={true}
-              >
-                <%= if @is_processing do %>
-                  {@timer_text}
-                <% else %>
-                  Upload & Gom nhóm
-                <% end %>
-              </button>
+              <% end %>
+
+              <div class="mt-4 flex justify-end items-center">
+                <button
+                  type="submit"
+                  class="btn btn-primary min-w-[160px]"
+                  disabled={true}
+                >
+                  <%= if @is_processing do %>
+                    {@timer_text}
+                  <% else %>
+                    Upload & Gom nhóm
+                  <% end %>
+                </button>
+              </div>
             </div>
           </form>
         </div>

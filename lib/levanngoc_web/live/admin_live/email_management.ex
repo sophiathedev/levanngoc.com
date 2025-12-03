@@ -62,8 +62,14 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
         }
       end
 
+    page_title = if template_data.exists && template_data.title && template_data.title != "" do
+      "Chỉnh sửa \"#{template_data.title}\" Template"
+    else
+      "Chỉnh sửa Email Template - #{template_data.type_label}"
+    end
+
     socket
-    |> assign(:page_title, "Chỉnh sửa Email Template - #{template_data.type_label}")
+    |> assign(:page_title, page_title)
     |> assign(:template_data, template_data)
     |> assign(
       :form,
@@ -125,36 +131,69 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
   def handle_event("save_template", %{"title" => title, "content" => content}, socket) do
     template_data = socket.assigns.template_data
 
-    result =
-      if template_data.exists do
-        # Update existing template
-        template = Repo.get_by!(EmailTemplate, template_id: template_data.template_id)
+    # Validate required fields are present in content
+    required_fields = EmailTemplate.required_template_fields(template_data.type)
+    missing_fields = Enum.filter(required_fields, fn field ->
+      !String.contains?(content, "<<[#{field}]>>")
+    end)
 
-        template
-        |> EmailTemplate.changeset(%{title: title, content: content})
-        |> Repo.update()
-      else
-        # Create new template
-        %EmailTemplate{}
-        |> EmailTemplate.changeset(%{
-          template_id: template_data.template_id,
-          title: title,
-          content: content
-        })
-        |> Repo.insert()
+    if Enum.empty?(missing_fields) do
+      result =
+        if template_data.exists do
+          # Update existing template
+          template = Repo.get_by!(EmailTemplate, template_id: template_data.template_id)
+
+          template
+          |> EmailTemplate.changeset(%{title: title, content: content})
+          |> Repo.update()
+        else
+          # Create new template
+          %EmailTemplate{}
+          |> EmailTemplate.changeset(%{
+            template_id: template_data.template_id,
+            title: title,
+            content: content
+          })
+          |> Repo.insert()
+        end
+
+      case result do
+        {:ok, saved_template} ->
+          # Update template_data to reflect it now exists
+          updated_template_data = Map.merge(template_data, %{
+            id: saved_template.id,
+            title: saved_template.title,
+            content: saved_template.content,
+            exists: true
+          })
+
+          # Update page title if template has a title
+          page_title = if saved_template.title && saved_template.title != "" do
+            "Chỉnh sửa \"#{saved_template.title}\" Template"
+          else
+            "Chỉnh sửa Email Template - #{template_data.type_label}"
+          end
+
+          {:noreply,
+           socket
+           |> put_flash(:info, "Email template đã được lưu thành công!")
+           |> assign(:template_data, updated_template_data)
+           |> assign(:page_title, page_title)}
+
+        {:error, changeset} ->
+          {:noreply,
+           socket
+           |> put_flash(:error, "Lỗi khi lưu template: #{inspect(changeset.errors)}")}
       end
+    else
+      # Missing required fields
+      missing_fields_str = missing_fields
+        |> Enum.map(&"<<[#{&1}]>>")
+        |> Enum.join(", ")
 
-    case result do
-      {:ok, _template} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, "Email template đã được lưu thành công!")
-         |> push_navigate(to: ~p"/admin/email-templates")}
-
-      {:error, changeset} ->
-        {:noreply,
-         socket
-         |> put_flash(:error, "Lỗi khi lưu template: #{inspect(changeset.errors)}")}
+      {:noreply,
+       socket
+       |> put_flash(:error, "Template thiếu các trường bắt buộc: #{missing_fields_str}")}
     end
   end
 
@@ -166,9 +205,9 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
         <div class="flex justify-between items-center">
           <h1 class="text-2xl font-bold">Quản lý Email Templates</h1>
         </div>
-
-        <!-- Email Templates Table -->
-        <div class="overflow-x-auto">
+        
+    <!-- Email Templates Table -->
+        <div class="overflow-x-auto border border-base-300 rounded-lg shadow-lg bg-base-100">
           <table class="table w-full">
             <thead>
               <tr>
@@ -316,7 +355,7 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
                 Quay lại
               </.link>
               <div class="flex items-center gap-2 mt-2">
-                <h1 class="text-2xl font-bold">Chỉnh sửa Email Template</h1>
+                <h1 class="text-2xl font-bold">{@page_title}</h1>
                 <button
                   type="button"
                   phx-click="open_info"
@@ -562,14 +601,14 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
           </div>
         </div>
       <% end %>
-
+      
     <!-- Info Modal -->
       <%= if @info_modal_open do %>
         <div class="fixed inset-0 z-50 overflow-y-auto">
           <!-- Backdrop with blur -->
           <div class="fixed inset-0 bg-black/50 backdrop-blur-sm" phx-click="close_info"></div>
-
-          <!-- Modal Content -->
+          
+    <!-- Modal Content -->
           <div class="flex min-h-full items-center justify-center p-4">
             <div class="relative bg-base-100 rounded-lg shadow-xl w-full max-w-2xl">
               <!-- Modal Header -->
@@ -596,8 +635,8 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
                   </svg>
                 </button>
               </div>
-
-              <!-- Modal Body -->
+              
+    <!-- Modal Body -->
               <div class="p-6">
                 <p class="text-sm text-base-content/70 mb-4">
                   Bạn có thể sử dụng các trường sau trong nội dung email của mình:
@@ -605,30 +644,41 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
                 <table class="table w-full">
                   <tbody>
                     <%= for field <- @allowed_fields do %>
+                      <% is_required = field in EmailTemplate.required_template_fields(@template_data.type) %>
                       <tr class="hover">
                         <td class="w-32">
-                          <div class="badge badge-primary">
-                            <%= field %>
+                          <div class="flex flex-col gap-1">
+                            <div class="badge badge-primary">
+                              {field}
+                            </div>
+                            <%= if is_required do %>
+                              <div class="badge badge-error badge-xs">
+                                Bắt buộc
+                              </div>
+                            <% end %>
                           </div>
                         </td>
                         <td>
                           <p class="text-sm font-medium">
-                            <%= format_field_name(field) %>
+                            {format_field_name(field)}
+                            <%= if is_required do %>
+                              <span class="text-error">*</span>
+                            <% end %>
                           </p>
                           <p class="text-xs text-base-content/60 mt-1">
-                            <%= format_field_description(field) %>
+                            {format_field_description(field)}
                           </p>
                         </td>
                         <td class="w-40 text-right">
                           <code class="text-xs bg-base-300 px-2 py-1 rounded">
-                            <%= "<<[#{field}]>>" %>
+                            {"<<[#{field}]>>"}
                           </code>
                         </td>
                       </tr>
                     <% end %>
                   </tbody>
                 </table>
-                <div class="mt-4 p-3 bg-info/10 rounded-lg">
+                <div class="mt-4 p-3 bg-info/10 rounded-lg space-y-2">
                   <p class="text-xs text-base-content/70">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -644,8 +694,29 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
                         d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                       />
                     </svg>
-                    Sử dụng cú pháp <code class="bg-base-300 px-1 rounded"><%= "<<[tên_trường]>>" %></code> để chèn giá trị động vào email.
+                    Sử dụng cú pháp <code class="bg-base-300 px-1 rounded">{"<<[tên_trường]>>"}</code>
+                    để chèn giá trị động vào email.
                   </p>
+                  <%= if !Enum.empty?(EmailTemplate.required_template_fields(@template_data.type)) do %>
+                    <p class="text-xs text-error/90">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-4 w-4 inline mr-1"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                        />
+                      </svg>
+                      Các trường có dấu <span class="text-error font-bold">*</span>
+                      là bắt buộc phải có trong template.
+                    </p>
+                  <% end %>
                 </div>
               </div>
             </div>
@@ -720,7 +791,8 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
 
   defp load_default_template(:forgot_password) do
     # Load default forgot password template from file
-    template_path = Path.join(:code.priv_dir(:levanngoc), "../template/forgot_password_email.html")
+    template_path =
+      Path.join(:code.priv_dir(:levanngoc), "../template/forgot_password_email.html")
 
     case File.read(template_path) do
       {:ok, content} -> content

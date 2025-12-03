@@ -1017,7 +1017,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
                       <div class="text-2xl font-bold text-success">{@result_stats.ranked_count}</div>
                     </div>
                     <div class="dropdown dropdown-end">
-                      <label tabindex="0" class="btn btn-ghost btn-sm">
+                      <label tabindex="0" class="btn btn-ghost btn-sm btn-square">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           fill="none"
@@ -1061,7 +1061,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
                       </div>
                     </div>
                     <div class="dropdown dropdown-end">
-                      <label tabindex="0" class="btn btn-ghost btn-sm">
+                      <label tabindex="0" class="btn btn-ghost btn-sm btn-square">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           fill="none"
@@ -1110,7 +1110,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
                     <div class="text-2xl font-bold">{@result_stats.total_keywords}</div>
                   </div>
                   <div class="dropdown dropdown-end">
-                    <label tabindex="0" class="btn btn-ghost btn-sm">
+                    <label tabindex="0" class="btn btn-ghost btn-sm btn-square">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         fill="none"

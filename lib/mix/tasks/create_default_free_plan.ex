@@ -15,8 +15,11 @@ defmodule Mix.Tasks.CreateDefaultFreePlan do
     case Billing.get_free_plan() do
       nil ->
         create_free_plan()
+
       plan ->
-        Mix.shell().info(IO.ANSI.format([:yellow, "A free plan already exists with ID: #{plan.id}"]))
+        Mix.shell().info(
+          IO.ANSI.format([:yellow, "A free plan already exists with ID: #{plan.id}"])
+        )
     end
   end
 
@@ -29,7 +32,10 @@ defmodule Mix.Tasks.CreateDefaultFreePlan do
 
     case Billing.create_billing_price(free_plan_attrs) do
       {:ok, plan} ->
-        Mix.shell().info(IO.ANSI.format([:green, "Successfully created free plan with ID: #{plan.id}"]))
+        Mix.shell().info(
+          IO.ANSI.format([:green, "Successfully created free plan with ID: #{plan.id}"])
+        )
+
       {:error, changeset} ->
         Mix.shell().error("Failed to create free plan:")
         display_errors(changeset)

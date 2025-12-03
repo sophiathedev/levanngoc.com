@@ -33,11 +33,6 @@ defmodule LevanngocWeb.UserAuth do
   or falls back to the `signed_in_path/1`.
   """
   def log_in_user(conn, user, params \\ %{}) do
-    # Activate the user when they log in
-    unless user.is_active do
-      Accounts.activate_user(user)
-    end
-
     user_return_to = get_session(conn, :user_return_to)
 
     conn

@@ -127,7 +127,10 @@ defmodule Levanngoc.Jobs.BillingTracker do
               :subscription_renewed
 
             {:error, changeset} ->
-              Logger.error("User #{user.id}: Failed to update token amount - #{inspect(changeset)}")
+              Logger.error(
+                "User #{user.id}: Failed to update token amount - #{inspect(changeset)}"
+              )
+
               Repo.rollback(changeset)
           end
 

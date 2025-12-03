@@ -135,6 +135,20 @@ defmodule Levanngoc.Accounts.User do
   end
 
   @doc """
+  A user changeset for admin password updates.
+  Does not require current password validation.
+  """
+  def admin_password_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:password])
+    |> validate_confirmation(:password, message: "Mật khẩu không khớp")
+    |> validate_required([:password], message: "không được để trống")
+    |> validate_length(:password, min: 8, message: "phải có ít nhất 8 ký tự")
+    |> validate_length(:password, max: 72, message: "không được quá 72 ký tự")
+    |> maybe_hash_password(hash_password: true)
+  end
+
+  @doc """
   Verifies the password.
 
   If there is no user or the user doesn't have a password, we call

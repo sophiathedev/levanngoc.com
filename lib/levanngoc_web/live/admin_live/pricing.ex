@@ -81,7 +81,12 @@ defmodule LevanngocWeb.AdminLive.Pricing do
     new_name = Map.get(billing_price_params, "name", "")
 
     if String.downcase(new_name) == "free" do
-      {:noreply, socket |> put_flash(:error, "Cannot create or rename to 'Free' plan - use the default Free plan instead")}
+      {:noreply,
+       socket
+       |> put_flash(
+         :error,
+         "Cannot create or rename to 'Free' plan - use the default Free plan instead"
+       )}
     else
       case socket.assigns.modal_action do
         :edit ->
@@ -142,10 +147,10 @@ defmodule LevanngocWeb.AdminLive.Pricing do
     ~H"""
     <div class="flex flex-col">
       <header class="mb-6">
-        <h2 class="text-2xl font-bold">Quản lý Pricing</h2>
+        <h2 class="text-2xl font-bold">Quản lý gói</h2>
       </header>
 
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto border border-base-300 rounded-lg shadow-lg bg-base-100">
         <table class="table table-zebra">
           <thead>
             <tr>
@@ -159,10 +164,10 @@ defmodule LevanngocWeb.AdminLive.Pricing do
           <tbody>
             <%= for billing_price <- @billing_prices do %>
               <tr id={"billing_price-#{billing_price.id}"}>
-                <td><%= billing_price.name %></td>
-                <td><%= billing_price.price %></td>
-                <td><%= billing_price.token_amount_provide %></td>
-                <td><%= format_date(billing_price.inserted_at) %></td>
+                <td>{billing_price.name}</td>
+                <td>{billing_price.price}</td>
+                <td>{billing_price.token_amount_provide}</td>
+                <td>{format_date(billing_price.inserted_at)}</td>
                 <td class="text-right">
                   <%= if String.downcase(billing_price.name) != "free" do %>
                     <button
@@ -201,7 +206,7 @@ defmodule LevanngocWeb.AdminLive.Pricing do
       <div class="modal modal-open">
         <div class="modal-box max-w-2xl">
           <h3 class="font-bold text-lg mb-4">
-            <%= if @modal_action == :new, do: "Tạo mới gói pricing", else: "Sửa gói pricing" %>
+            {if @modal_action == :new, do: "Tạo mới gói pricing", else: "Sửa gói pricing"}
           </h3>
 
           <.form for={@form} phx-change="validate" phx-submit="save">
@@ -241,7 +246,7 @@ defmodule LevanngocWeb.AdminLive.Pricing do
 
             <div class="modal-action">
               <button type="submit" class="btn btn-primary" phx-disable-with="Saving...">
-                <%= if @modal_action == :new, do: "Tạo mới", else: "Cập nhật" %>
+                {if @modal_action == :new, do: "Tạo mới", else: "Cập nhật"}
               </button>
               <button type="button" class="btn btn-ghost" phx-click="close_modal">
                 Hủy
@@ -255,12 +260,15 @@ defmodule LevanngocWeb.AdminLive.Pricing do
   end
 
   defp format_date(nil), do: ""
+
   defp format_date(datetime) do
     case datetime do
       %DateTime{} ->
         "#{datetime.year}-#{pad_zero(datetime.month)}-#{pad_zero(datetime.day)} #{pad_zero(datetime.hour)}:#{pad_zero(datetime.minute)}"
+
       %NaiveDateTime{} ->
         "#{datetime.year}-#{pad_zero(datetime.month)}-#{pad_zero(datetime.day)} #{pad_zero(datetime.hour)}:#{pad_zero(datetime.minute)}"
+
       _ ->
         ""
     end

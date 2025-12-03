@@ -22,6 +22,11 @@ defmodule Levanngoc.EmailTemplate do
     forgot_password: [:reset_url]
   }
 
+  @required_template_fields %{
+    registration: [:password],
+    forgot_password: [:reset_url]
+  }
+
   @doc """
   Returns the template type atom for a given template_id integer.
   """
@@ -54,6 +59,13 @@ defmodule Levanngoc.EmailTemplate do
   Returns all template fields configuration.
   """
   def all_template_fields, do: @template_fields
+
+  @doc """
+  Returns the required fields for a given template type.
+  """
+  def required_template_fields(template_type) when is_atom(template_type) do
+    Map.get(@required_template_fields, template_type, [])
+  end
 
   @doc false
   def changeset(email_template, attrs) do
