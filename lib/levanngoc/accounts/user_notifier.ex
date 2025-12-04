@@ -150,8 +150,7 @@ defmodule Levanngoc.Accounts.UserNotifier do
       case template do
         nil ->
           # No template in database, use the default file template
-          template_path =
-            Path.join(:code.priv_dir(:levanngoc), "../template/registration_email.html")
+          template_path = Application.app_dir(:levanngoc, "priv/template/registration_email.html")
 
           {:ok, content} = File.read(template_path)
           {"[levanngoc.com] Thông tin đăng nhập tài khoản", content}
@@ -188,8 +187,7 @@ defmodule Levanngoc.Accounts.UserNotifier do
       case template do
         nil ->
           # No template in database, use the default file template
-          template_path =
-            Path.join(:code.priv_dir(:levanngoc), "../template/forgot_password_email.html")
+          template_path = Application.app_dir(:levanngoc, "priv/template/forgot_password_email.html")
 
           {:ok, content} = File.read(template_path)
           {"[levanngoc.com] Đặt lại mật khẩu", content}
@@ -220,8 +218,7 @@ defmodule Levanngoc.Accounts.UserNotifier do
       case template do
         nil ->
           # No template in database, use the default file template
-          template_path =
-            Path.join(:code.priv_dir(:levanngoc), "../template/activation_email.html")
+          template_path = Application.app_dir(:levanngoc, "priv/template/activation_email.html")
 
           {:ok, content} = File.read(template_path)
           {"[levanngoc.com] Kích hoạt tài khoản", content}
