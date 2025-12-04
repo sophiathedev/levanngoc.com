@@ -77,6 +77,14 @@ defmodule Levanngoc.Accounts do
   end
 
   @doc """
+  Validates only the email for pre-registration (before OTP verification).
+  Checks email format and uniqueness without requiring password.
+  """
+  def validate_email_for_registration(%User{} = user, attrs \\ %{}) do
+    User.email_changeset(user, attrs, validate_unique: true)
+  end
+
+  @doc """
   Registers a user.
 
   ## Examples

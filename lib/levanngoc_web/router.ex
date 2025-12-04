@@ -120,6 +120,8 @@ defmodule LevanngocWeb.Router do
       live "/users/activation", UserLive.Activation, :new
     end
 
+
+
     post "/users/log-in", UserSessionController, :create
     delete "/users/log-out", UserSessionController, :delete
   end

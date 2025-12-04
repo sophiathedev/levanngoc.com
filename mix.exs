@@ -77,7 +77,8 @@ defmodule Levanngoc.MixProject do
       {:oban, "~> 2.19"},
       {:logger_file_backend, "~> 0.0.14"},
       {:goth, "~> 1.4"},
-      {:google_api_drive, "~> 0.32.0"}
+      {:google_api_drive, "~> 0.32.0"},
+      {:cachex, "~> 4.0"}
     ]
   end
 

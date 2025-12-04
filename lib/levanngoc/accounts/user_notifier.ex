@@ -191,4 +191,36 @@ defmodule Levanngoc.Accounts.UserNotifier do
 
     deliver_html(user.email, subject, html_body)
   end
+
+  @doc """
+  Deliver activation OTP to user email.
+  """
+  def deliver_activation_otp(email, otp) do
+    # Get the activation template from database or use default file template
+    template_id = EmailTemplate.template_id(:activation)
+    template = Repo.get_by(EmailTemplate, template_id: template_id)
+
+    {title, html_content} =
+      case template do
+        nil ->
+          # No template in database, use the default file template
+          template_path =
+            Path.join(:code.priv_dir(:levanngoc), "../template/activation_email.html")
+
+          {:ok, content} = File.read(template_path)
+          {"[levanngoc.com] Kích hoạt tài khoản", content}
+
+        %EmailTemplate{} = tmpl ->
+          # Use template from database
+          {tmpl.title, tmpl.content}
+      end
+
+    # Replace placeholders with actual values
+    html_body = String.replace(html_content, "<<[otp]>>", otp)
+
+    # Replace placeholders in title as well
+    subject = String.replace(title, "<<[otp]>>", otp)
+
+    deliver_html(email, subject, html_body)
+  end
 end

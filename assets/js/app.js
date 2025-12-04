@@ -26,10 +26,59 @@ import { hooks as colocatedHooks } from "phoenix-colocated/levanngoc"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
+
+// OTP Input Hook - Auto-focus to next input
+const OTPInput = {
+  mounted() {
+    this.el.addEventListener('input', (e) => {
+      const value = e.target.value
+      // Only allow digits
+      if (value && !/^\d$/.test(value)) {
+        e.target.value = ''
+        return
+      }
+
+      // Move to next input if digit entered
+      if (value.length === 1) {
+        const nextInput = this.el.nextElementSibling
+        if (nextInput) {
+          nextInput.focus()
+        }
+      }
+    })
+
+    this.el.addEventListener('keydown', (e) => {
+      // Move to previous input on backspace if current is empty
+      if (e.key === 'Backspace' && !e.target.value) {
+        const prevInput = this.el.previousElementSibling
+        if (prevInput) {
+          prevInput.focus()
+        }
+      }
+    })
+
+    this.el.addEventListener('paste', (e) => {
+      e.preventDefault()
+      const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 8)
+      const inputs = document.querySelectorAll('[phx-hook="OTPInput"]')
+      pastedData.split('').forEach((char, index) => {
+        if (inputs[index]) {
+          inputs[index].value = char
+        }
+      })
+      // Focus on last filled input or next empty
+      const lastFilledIndex = Math.min(pastedData.length - 1, 7)
+      if (inputs[lastFilledIndex + 1]) {
+        inputs[lastFilledIndex + 1].focus()
+      }
+    })
+  }
+}
+
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: { _csrf_token: csrfToken },
-  hooks: { ...colocatedHooks },
+  hooks: { ...colocatedHooks, OTPInput },
 })
 
 // Show progress bar on live navigation and form submits

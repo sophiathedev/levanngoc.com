@@ -14,17 +14,20 @@ defmodule Levanngoc.EmailTemplate do
 
   @template_types %{
     0 => :registration,
-    1 => :forgot_password
+    1 => :forgot_password,
+    2 => :activation
   }
 
   @template_fields %{
     registration: [:email, :password],
-    forgot_password: [:reset_url]
+    forgot_password: [:reset_url],
+    activation: [:otp]
   }
 
   @required_template_fields %{
     registration: [:password],
-    forgot_password: [:reset_url]
+    forgot_password: [:reset_url],
+    activation: [:otp]
   }
 
   @doc """

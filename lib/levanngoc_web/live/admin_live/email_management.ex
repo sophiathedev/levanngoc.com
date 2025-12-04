@@ -62,11 +62,12 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
         }
       end
 
-    page_title = if template_data.exists && template_data.title && template_data.title != "" do
-      "Chỉnh sửa \"#{template_data.title}\" Template"
-    else
-      "Chỉnh sửa Email Template - #{template_data.type_label}"
-    end
+    page_title =
+      if template_data.exists && template_data.title && template_data.title != "" do
+        "Chỉnh sửa \"#{template_data.title}\" Template"
+      else
+        "Chỉnh sửa Email Template - #{template_data.type_label}"
+      end
 
     socket
     |> assign(:page_title, page_title)
@@ -133,9 +134,11 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
 
     # Validate required fields are present in content
     required_fields = EmailTemplate.required_template_fields(template_data.type)
-    missing_fields = Enum.filter(required_fields, fn field ->
-      !String.contains?(content, "<<[#{field}]>>")
-    end)
+
+    missing_fields =
+      Enum.filter(required_fields, fn field ->
+        !String.contains?(content, "<<[#{field}]>>")
+      end)
 
     if Enum.empty?(missing_fields) do
       result =
@@ -160,19 +163,21 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
       case result do
         {:ok, saved_template} ->
           # Update template_data to reflect it now exists
-          updated_template_data = Map.merge(template_data, %{
-            id: saved_template.id,
-            title: saved_template.title,
-            content: saved_template.content,
-            exists: true
-          })
+          updated_template_data =
+            Map.merge(template_data, %{
+              id: saved_template.id,
+              title: saved_template.title,
+              content: saved_template.content,
+              exists: true
+            })
 
           # Update page title if template has a title
-          page_title = if saved_template.title && saved_template.title != "" do
-            "Chỉnh sửa \"#{saved_template.title}\" Template"
-          else
-            "Chỉnh sửa Email Template - #{template_data.type_label}"
-          end
+          page_title =
+            if saved_template.title && saved_template.title != "" do
+              "Chỉnh sửa \"#{saved_template.title}\" Template"
+            else
+              "Chỉnh sửa Email Template - #{template_data.type_label}"
+            end
 
           {:noreply,
            socket
@@ -187,7 +192,8 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
       end
     else
       # Missing required fields
-      missing_fields_str = missing_fields
+      missing_fields_str =
+        missing_fields
         |> Enum.map(&"<<[#{&1}]>>")
         |> Enum.join(", ")
 
@@ -644,7 +650,8 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
                 <table class="table w-full">
                   <tbody>
                     <%= for field <- @allowed_fields do %>
-                      <% is_required = field in EmailTemplate.required_template_fields(@template_data.type) %>
+                      <% is_required =
+                        field in EmailTemplate.required_template_fields(@template_data.type) %>
                       <tr class="hover">
                         <td class="w-32">
                           <div class="flex flex-col gap-1">
@@ -775,38 +782,27 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
     case type do
       :registration -> "đăng ký"
       :forgot_password -> "quên mật khẩu"
+      :activation -> "kích hoạt tài khoản"
       _ -> type |> to_string() |> String.capitalize()
     end
   end
 
-  defp load_default_template(:registration) do
-    # Load default registration template from file
-    template_path = Path.join(:code.priv_dir(:levanngoc), "../template/registration_email.html")
+  defp load_default_template(type) when is_atom(type) or is_binary(type) do
+    filename = "#{type}_email.html"
+    template_path = Path.join(:code.priv_dir(:levanngoc), "../template/#{filename}")
 
     case File.read(template_path) do
       {:ok, content} -> content
       {:error, _} -> ""
     end
   end
-
-  defp load_default_template(:forgot_password) do
-    # Load default forgot password template from file
-    template_path =
-      Path.join(:code.priv_dir(:levanngoc), "../template/forgot_password_email.html")
-
-    case File.read(template_path) do
-      {:ok, content} -> content
-      {:error, _} -> ""
-    end
-  end
-
-  defp load_default_template(_type), do: ""
 
   defp format_field_name(field) do
     case field do
       :email -> "Email"
       :password -> "Mật khẩu"
       :reset_url -> "Liên kết đặt lại mật khẩu"
+      :otp -> "Mã OTP"
       _ -> field |> to_string() |> String.capitalize()
     end
   end
@@ -816,6 +812,7 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
       :email -> "Địa chỉ email của người dùng"
       :password -> "Mật khẩu của người dùng (chỉ hiển thị khi đăng ký)"
       :reset_url -> "URL để người dùng đặt lại mật khẩu"
+      :otp -> "Mã OTP 8 chữ số để kích hoạt tài khoản"
       _ -> "Mô tả chưa có sẵn"
     end
   end

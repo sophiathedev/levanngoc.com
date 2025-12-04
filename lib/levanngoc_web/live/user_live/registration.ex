@@ -42,49 +42,57 @@ defmodule LevanngocWeb.UserLive.Registration do
   @impl true
   def mount(_params, _session, %{assigns: %{current_scope: %{user: user}}} = socket)
       when not is_nil(user) do
-    # User is already authenticated, redirect to home
     {:ok, push_navigate(socket, to: "/")}
   end
 
   def mount(_params, _session, socket) do
-    changeset = Accounts.change_user_registration(%User{})
+    changeset = Accounts.validate_email_for_registration(%User{})
 
     {:ok, assign_form(socket, changeset), temporary_assigns: [form: nil]}
   end
 
   @impl true
   def handle_event("save", %{"user" => user_params}, socket) do
-    # Generate a random password
-    generated_password = generate_password()
+    # Validate only the email (format and uniqueness)
+    changeset = Accounts.validate_email_for_registration(%User{}, user_params)
 
-    # Add the generated password to user params
-    user_params_with_password =
-      Map.merge(user_params, %{
-        "password" => generated_password,
-        "password_confirmation" => generated_password
-      })
+    if changeset.valid? do
+      # Generate a random password
+      generated_password = generate_password()
 
-    case Accounts.register_user(user_params_with_password) do
-      {:ok, _user} ->
-        # Send email with the generated password
-        email = user_params["email"]
-        Levanngoc.Accounts.UserNotifier.deliver_generated_password(email, generated_password)
+      # Generate an 8-digit OTP
+      otp = generate_otp()
 
-        {:noreply,
-         socket
-         |> put_flash(
-           :info,
-           "Email đã được gửi đến tài khoản email của bạn, vui lòng kiểm tra hộp thư đến hoặc thư mục spam."
-         )
-         |> push_navigate(to: ~p"/users/log-in")}
+      email = user_params["email"]
 
-      {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign_form(socket, changeset)}
+      # Prepare user data to cache for later registration
+      user_data = %{
+        email: email,
+        password: generated_password,
+        password_confirmation: generated_password
+      }
+
+      Cachex.put(:cache, email, otp, expire: :timer.minutes(15))
+      Cachex.put(:cache, "#{email}_user_data", user_data, expire: :timer.minutes(15))
+      Accounts.UserNotifier.deliver_activation_otp(email, otp)
+
+      {:noreply,
+       socket
+       |> put_flash(
+         :info,
+         "Email kích hoạt với mã OTP đã được gửi đến #{email}. Vui lòng kiểm tra hộp thư đến hoặc thư mục spam."
+       )
+       |> push_navigate(
+         to: ~p"/users/activation?email=#{URI.encode_www_form(email)}",
+         replace: false
+       )}
+    else
+      {:noreply, assign_form(socket, Map.put(changeset, :action, :validate))}
     end
   end
 
   def handle_event("validate", %{"user" => user_params}, socket) do
-    changeset = Accounts.change_user_registration(%User{}, user_params)
+    changeset = Accounts.validate_email_for_registration(%User{}, user_params)
     {:noreply, assign_form(socket, Map.put(changeset, :action, :validate))}
   end
 
@@ -96,6 +104,13 @@ defmodule LevanngocWeb.UserLive.Registration do
     for _ <- 1..length, into: "" do
       <<Enum.random(String.to_charlist(chars))>>
     end
+  end
+
+  defp generate_otp do
+    # Generate an 8-digit OTP
+    :rand.uniform(99_999_999)
+    |> Integer.to_string()
+    |> String.pad_leading(8, "0")
   end
 
   defp assign_form(socket, %Ecto.Changeset{} = changeset) do

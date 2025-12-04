@@ -45,6 +45,7 @@ defmodule Levanngoc.Application do
       Levanngoc.Repo,
       {DNSCluster, query: Application.get_env(:levanngoc, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Levanngoc.PubSub},
+      {Cachex, [:cache]},
       # Start a worker by calling: Levanngoc.Worker.start_link(arg)
       # {Levanngoc.Worker, arg},
       # Start to serve requests, typically the last entry
