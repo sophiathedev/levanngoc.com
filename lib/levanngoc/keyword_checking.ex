@@ -23,7 +23,7 @@ defmodule Levanngoc.KeywordChecking do
     |> validate_format(
       :website_url,
       ~r/^(https?:\/\/)?[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}([\/\w.-]*)*$/i,
-      message: "must be a valid URL format"
+      message: "phải có định dạng URL hợp lệ"
     )
     |> assoc_constraint(:user)
   end

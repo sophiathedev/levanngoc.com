@@ -41,7 +41,7 @@ defmodule LevanngocWeb.AdminLive.Pricing do
 
     # Prevent editing the free plan
     if String.downcase(billing_price.name) == "free" do
-      {:noreply, socket |> put_flash(:error, "Cannot edit the Free plan")}
+      {:noreply, socket |> put_flash(:error, "Không thể chỉnh sửa gói Free")}
     else
       form = to_form(Billing.change_billing_price(billing_price), as: "billing_price")
 
@@ -68,7 +68,7 @@ defmodule LevanngocWeb.AdminLive.Pricing do
 
     # Prevent deleting the free plan
     if String.downcase(billing_price.name) == "free" do
-      {:noreply, socket |> put_flash(:error, "Cannot delete the Free plan")}
+      {:noreply, socket |> put_flash(:error, "Không thể xóa gói Free")}
     else
       {:ok, _} = Billing.delete_billing_price(billing_price)
 
@@ -85,7 +85,7 @@ defmodule LevanngocWeb.AdminLive.Pricing do
        socket
        |> put_flash(
          :error,
-         "Cannot create or rename to 'Free' plan - use the default Free plan instead"
+         "Không thể tạo hoặc đổi tên thành gói 'Free' - vui lòng sử dụng gói Free mặc định"
        )}
     else
       case socket.assigns.modal_action do

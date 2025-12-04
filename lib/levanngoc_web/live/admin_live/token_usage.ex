@@ -73,12 +73,12 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
              |> put_flash(:info, "Đã cập nhật lượng token sử dụng cho Kiểm tra URL Index")}
 
           {:error, _changeset} ->
-            {:noreply, put_flash(socket, :error, "Failed to save Token Usage Check URL Index")}
+            {:noreply, put_flash(socket, :error, "Không thể lưu Cấu hình Token cho Kiểm tra URL Index")}
         end
 
       _ ->
         {:noreply,
-         put_flash(socket, :error, "Token Usage Check URL Index must be a positive integer")}
+         put_flash(socket, :error, "Cấu hình Token cho Kiểm tra URL Index phải là một số nguyên dương")}
     end
   end
 
@@ -119,12 +119,12 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
              |> put_flash(:info, "Đã cập nhật lượng token sử dụng cho Kiểm tra Allintitle")}
 
           {:error, _changeset} ->
-            {:noreply, put_flash(socket, :error, "Failed to save Token Usage Check Allintitle")}
+            {:noreply, put_flash(socket, :error, "Không thể lưu Cấu hình Token cho Kiểm tra Allintitle")}
         end
 
       _ ->
         {:noreply,
-         put_flash(socket, :error, "Token Usage Check Allintitle must be a positive integer")}
+         put_flash(socket, :error, "Cấu hình Token cho Kiểm tra Allintitle phải là một số nguyên dương")}
     end
   end
 
@@ -165,12 +165,12 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
              |> put_flash(:info, "Đã cập nhật lượng token sử dụng cho Kiểm tra thứ hạng từ khóa")}
 
           {:error, _changeset} ->
-            {:noreply, put_flash(socket, :error, "Failed to save Token Usage Keyword Ranking")}
+            {:noreply, put_flash(socket, :error, "Không thể lưu Cấu hình Token cho Kiểm tra thứ hạng từ khóa")}
         end
 
       _ ->
         {:noreply,
-         put_flash(socket, :error, "Token Usage Keyword Ranking must be a positive integer")}
+         put_flash(socket, :error, "Cấu hình Token cho Kiểm tra thứ hạng từ khóa phải là một số nguyên dương")}
     end
   end
 
@@ -211,12 +211,12 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
              |> put_flash(:info, "Đã cập nhật lượng token sử dụng cho Gom nhóm từ khóa")}
 
           {:error, _changeset} ->
-            {:noreply, put_flash(socket, :error, "Failed to save Token Usage Keyword Grouping")}
+            {:noreply, put_flash(socket, :error, "Không thể lưu Cấu hình Token cho Gom nhóm từ khóa")}
         end
 
       _ ->
         {:noreply,
-         put_flash(socket, :error, "Token Usage Keyword Grouping must be a positive integer")}
+         put_flash(socket, :error, "Cấu hình Token cho Gom nhóm từ khóa phải là một số nguyên dương")}
     end
   end
 
@@ -263,7 +263,7 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
 
           {:error, _changeset} ->
             {:noreply,
-             put_flash(socket, :error, "Failed to save Token Usage Checking Duplicate Content")}
+             put_flash(socket, :error, "Không thể lưu Cấu hình Token cho Kiểm tra trùng lặp nội dung")}
         end
 
       _ ->
@@ -271,7 +271,7 @@ defmodule LevanngocWeb.AdminLive.TokenUsage do
          put_flash(
            socket,
            :error,
-           "Token Usage Checking Duplicate Content must be a positive integer"
+           "Cấu hình Token cho Kiểm tra trùng lặp nội dung phải là một số nguyên dương"
          )}
     end
   end

@@ -77,6 +77,6 @@ defmodule Levanngoc.EmailTemplate do
     |> validate_required([:template_id, :title, :content])
     |> validate_length(:title, max: 512)
     |> validate_inclusion(:template_id, Map.keys(@template_types))
-    |> unique_constraint(:template_id)
+    |> unique_constraint(:template_id, message: "đã tồn tại")
   end
 end

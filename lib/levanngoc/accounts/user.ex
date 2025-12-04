@@ -45,14 +45,14 @@ defmodule Levanngoc.Accounts.User do
       changeset
       |> validate_required([:email])
       |> validate_format(:email, ~r/^[^@,;\s]+@[^@,;\s]+$/,
-        message: "must have the @ sign and no spaces"
+        message: "phải có dấu @ và không có khoảng trắng"
       )
       |> validate_length(:email, max: 160)
 
     if Keyword.get(opts, :validate_unique, true) do
       changeset
       |> unsafe_validate_unique(:email, Levanngoc.Repo)
-      |> unique_constraint(:email)
+      |> unique_constraint(:email, message: "đã được sử dụng")
       |> validate_email_changed()
     else
       changeset
@@ -61,7 +61,7 @@ defmodule Levanngoc.Accounts.User do
 
   defp validate_email_changed(changeset) do
     if get_field(changeset, :email) && get_change(changeset, :email) == nil do
-      add_error(changeset, :email, "did not change")
+      add_error(changeset, :email, "email không được thay đổi")
     else
       changeset
     end
@@ -85,7 +85,7 @@ defmodule Levanngoc.Accounts.User do
   def password_changeset(user, attrs, opts \\ []) do
     user
     |> cast(attrs, [:password])
-    |> validate_confirmation(:password, message: "does not match password")
+    |> validate_confirmation(:password, message: "mật khẩu không khớp")
     |> validate_password(opts)
   end
 

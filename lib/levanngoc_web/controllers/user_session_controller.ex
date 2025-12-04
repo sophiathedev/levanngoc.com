@@ -16,19 +16,46 @@ defmodule LevanngocWeb.UserSessionController do
   defp create(conn, %{"user" => %{"token" => token} = user_params}, info) do
     case Accounts.login_user_by_magic_link(token) do
       {:ok, {user, tokens_to_disconnect}} ->
-        if user.banned_at do
-          conn
-          |> put_flash(
-            :error,
-            "Người dùng này hiện đã bị ban, vui lòng liên hệ admin để được xử lý"
-          )
-          |> redirect(to: ~p"/users/log-in")
-        else
-          UserAuth.disconnect_sessions(tokens_to_disconnect)
+        cond do
+          user.banned_at ->
+            conn
+            |> put_flash(
+              :error,
+              "Người dùng này hiện đã bị ban, vui lòng liên hệ admin để được xử lý"
+            )
+            |> redirect(to: ~p"/users/log-in")
 
-          conn
-          |> put_flash(:info, info)
-          |> UserAuth.log_in_user(user, user_params)
+          !user.is_active ->
+            # Store random key in cache before activating
+            random_key = :crypto.strong_rand_bytes(32) |> Base.encode16(case: :lower)
+            Cachex.put(:cache, "first-time:#{user.email}", random_key, expire: :timer.seconds(90))
+
+            {:ok, activated_user} = Accounts.activate_user(user)
+            UserAuth.disconnect_sessions(tokens_to_disconnect)
+
+            conn
+            |> put_flash(:info, "Vui lòng đặt mật khẩu mới cho tài khoản của bạn")
+            |> put_session(:user_return_to, ~p"/users/first-time-password/#{random_key}")
+            |> UserAuth.log_in_user(activated_user, user_params)
+
+          true ->
+            UserAuth.disconnect_sessions(tokens_to_disconnect)
+
+            # Check if there's a first-time token in cache for this user
+            case Cachex.get(:cache, "first-time:#{user.email}") do
+              {:ok, token} when not is_nil(token) ->
+                # User has a first-time token, redirect to password reset
+                conn
+                |> put_flash(:info, "Vui lòng đặt mật khẩu mới cho tài khoản của bạn")
+                |> put_session(:user_return_to, ~p"/users/first-time-password/#{token}")
+                |> UserAuth.log_in_user(user, user_params)
+
+              _ ->
+                # Normal login flow
+                conn
+                |> put_flash(:info, info)
+                |> UserAuth.log_in_user(user, user_params)
+            end
         end
 
       _ ->
@@ -53,10 +80,34 @@ defmodule LevanngocWeb.UserSessionController do
         )
         |> redirect(to: ~p"/users/log-in")
 
-      user && Levanngoc.Accounts.User.valid_password?(user, password) ->
+      user && !user.is_active && Levanngoc.Accounts.User.valid_password?(user, password) ->
+        # User is not active, store random key in cache then activate and redirect
+        random_key = :crypto.strong_rand_bytes(32) |> Base.encode16(case: :lower)
+        Cachex.put(:cache, "first-time:#{user.email}", random_key)
+
+        {:ok, activated_user} = Accounts.activate_user(user)
+
         conn
-        |> put_flash(:info, info)
-        |> UserAuth.log_in_user(user, user_params)
+        |> put_flash(:info, "Vui lòng đặt mật khẩu mới cho tài khoản của bạn")
+        |> put_session(:user_return_to, ~p"/users/first-time-password/#{random_key}")
+        |> UserAuth.log_in_user(activated_user, user_params)
+
+      user && Levanngoc.Accounts.User.valid_password?(user, password) ->
+        # Check if there's a first-time token in cache for this user
+        case Cachex.get(:cache, "first-time:#{user.email}") do
+          {:ok, token} when not is_nil(token) ->
+            # User has a first-time token, redirect to password reset
+            conn
+            |> put_flash(:info, "Vui lòng đặt mật khẩu mới cho tài khoản của bạn")
+            |> put_session(:user_return_to, ~p"/users/first-time-password/#{token}")
+            |> UserAuth.log_in_user(user, user_params)
+
+          _ ->
+            # Normal login flow
+            conn
+            |> put_flash(:info, info)
+            |> UserAuth.log_in_user(user, user_params)
+        end
 
       true ->
         conn
