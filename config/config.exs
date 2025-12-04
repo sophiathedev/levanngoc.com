@@ -45,6 +45,7 @@ config :levanngoc, LevanngocWeb.Endpoint,
 #
 # For production it's recommended to configure a different adapter
 # at the `config/runtime.exs`.
+# Note: The actual Mailgun adapter will be used dynamically from database settings
 config :levanngoc, Levanngoc.Mailer, adapter: Swoosh.Adapters.Local
 
 # Configure esbuild (the version is required)

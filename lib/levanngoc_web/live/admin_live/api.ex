@@ -58,6 +58,9 @@ defmodule LevanngocWeb.AdminLive.Api do
 
     case save_or_update_mailgun_settings(mailgun_attrs) do
       {:ok, updated_settings} ->
+        # Clear the Mailgun cache to force refresh on next email send
+        Levanngoc.Settings.MailgunCache.clear_cache()
+
         {:noreply,
          socket
          |> assign(:settings, updated_settings)

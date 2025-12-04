@@ -64,6 +64,39 @@ defmodule Levanngoc.External.ScrapingDog do
     end
   end
 
+  def scrape_serp_for_grouping(%__MODULE__{} = state, keyword) do
+    params = build_params(state, :scrape_serp_for_grouping, keyword)
+
+    query_string = URI.encode_query(params)
+    full_url = "#{@check_index_url_endpoint}?#{query_string}"
+
+    case HTTPoison.get(full_url, [], recv_timeout: :timer.seconds(20)) do
+      {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
+        case Jason.decode(body) do
+          {:ok, data} ->
+            organic_results = Map.get(data, "organic_results", [])
+
+            # Extract relevant information: title, link, position
+            Enum.map(organic_results, fn result ->
+              %{
+                title: Map.get(result, "title"),
+                link: Map.get(result, "link"),
+                position: Map.get(result, "rank")
+              }
+            end)
+
+          {:error, reason} ->
+            raise "Failed to parse JSON response: #{inspect(reason)}"
+        end
+
+      {:ok, %HTTPoison.Response{status_code: status_code, body: body}} ->
+        raise "Request failed with status code #{status_code}: #{body}"
+
+      {:error, %HTTPoison.Error{reason: reason}} ->
+        raise "HTTP request failed: #{inspect(reason)}"
+    end
+  end
+
   def check_keyword_ranking(%__MODULE__{} = state, keyword, url) do
     check_keyword_ranking_with_pagination(state, keyword, url, 0)
   end
@@ -131,7 +164,18 @@ defmodule Levanngoc.External.ScrapingDog do
     }
   end
 
-  defp build_params(%__MODULE__{} = state, :check_keyword_ranking, keyword, page \\ 0) do
+  defp build_params(%__MODULE__{} = state, :scrape_serp_for_grouping, keyword) do
+    %{
+      api_key: state.api_key,
+      query: keyword,
+      country: "vn",
+      language: "en",
+      advance_search: "true",
+      domain: "google.com"
+    }
+  end
+
+  defp build_params(%__MODULE__{} = state, :check_keyword_ranking, keyword, page) do
     %{
       api_key: state.api_key,
       query: "#{keyword}",

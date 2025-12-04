@@ -73,15 +73,17 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
       is_edit_mode = socket.assigns.is_edit_mode
       manual_keywords = socket.assigns.manual_keywords
 
-      keywords =
+      keyword_data =
         if is_edit_mode do
           # Parse manual keywords - split by newlines and filter empty
+          # No traffic data in edit mode
           manual_keywords
           |> String.split("\n")
           |> Enum.map(&String.trim/1)
           |> Enum.filter(&(&1 != ""))
+          |> Enum.map(fn keyword -> %{keyword: keyword, traffic: nil} end)
         else
-          # Parse from uploaded file
+          # Parse from uploaded file - includes traffic data
           uploaded_files =
             consume_uploaded_entries(socket, :file, fn %{path: path}, entry ->
               parse_file(path, entry.client_type)
@@ -92,7 +94,7 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
           List.flatten(uploaded_files)
         end
 
-      total_keywords = length(keywords)
+      total_keywords = length(keyword_data)
       total_cost = total_keywords * token_usage_check_allintitle
       current_token_amount = socket.assigns.current_scope.user.token_amount || 0
       remaining_tokens = current_token_amount - total_cost
@@ -108,7 +110,7 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
       {:noreply,
        socket
        |> assign(:cost_details, cost_details)
-       |> assign(:keywords_to_process, keywords)
+       |> assign(:keyword_data_to_process, keyword_data)
        |> assign(:scraping_dog_api_key, scraping_dog_api_key)
        |> assign(:show_confirm_modal, true)}
     else
@@ -164,9 +166,22 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
   end
 
   @impl true
-  def handle_event("download_example", %{"format" => _format}, socket) do
-    # TODO: Implement download example functionality
-    {:noreply, socket}
+  def handle_event("download_example", %{"format" => format}, socket) do
+    # Generate example file content based on format
+    {content, filename, _content_type} =
+      case format do
+        "xlsx" ->
+          generate_example_xlsx()
+
+        "csv" ->
+          generate_example_csv()
+      end
+
+    {:noreply,
+     push_event(socket, "download-file", %{
+       content: Base.encode64(content),
+       filename: filename
+     })}
   end
 
   @impl true
@@ -186,7 +201,7 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
 
   @impl true
   def handle_event("confirm_check", _params, socket) do
-    keywords = socket.assigns.keywords_to_process
+    keyword_data = socket.assigns.keyword_data_to_process
     scraping_dog_api_key = socket.assigns.scraping_dog_api_key
     total_cost = socket.assigns.cost_details.total_cost
     current_user = socket.assigns.current_scope.user
@@ -215,13 +230,13 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
             |> Levanngoc.External.ScrapingDog.put_apikey(scraping_dog_api_key)
 
           results =
-            keywords
+            keyword_data
             |> Task.async_stream(
-              fn keyword ->
+              fn %{keyword: keyword, traffic: traffic} ->
                 result_count =
                   Levanngoc.External.ScrapingDog.check_allintitle(scraping_dog, keyword)
 
-                %{keyword: keyword, result_count: result_count}
+                %{keyword: keyword, traffic: traffic, result_count: result_count}
               end,
               max_concurrency: @number_of_check_all_in_title_threads,
               timeout: :infinity
@@ -248,7 +263,7 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
      socket
      |> assign(:show_confirm_modal, false)
      |> assign(:cost_details, nil)
-     |> assign(:keywords_to_process, [])}
+     |> assign(:keyword_data_to_process, [])}
   end
 
   @impl true
@@ -313,13 +328,27 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
     timestamp = format_timestamp(to_ho_chi_minh_time(DateTime.utc_now()))
     filename = "allintitle_check_#{type}_#{timestamp}.xlsx"
 
-    # Create workbook with Elixlsx
+    # Create workbook with Elixlsx - include traffic if available
     sheet =
       results
       |> Enum.map(fn result ->
-        [result.keyword, result.result_count]
+        if result.traffic do
+          [result.keyword, result.traffic, result.result_count]
+        else
+          [result.keyword, result.result_count]
+        end
       end)
-      |> then(fn rows -> [["Keyword", "Result Count"] | rows] end)
+      |> then(fn rows ->
+        # Add header based on whether traffic exists
+        header =
+          if Enum.any?(results, fn r -> r.traffic end) do
+            ["Keyword", "Traffic", "Result Count"]
+          else
+            ["Keyword", "Result Count"]
+          end
+
+        [header | rows]
+      end)
 
     workbook = %Elixlsx.Workbook{
       sheets: [
@@ -354,13 +383,24 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
     timestamp = format_timestamp(to_ho_chi_minh_time(DateTime.utc_now()))
     filename = "allintitle_check_#{type}_#{timestamp}.csv"
 
-    # Create CSV content
-    header = "Keyword,Result Count\n"
+    # Create CSV content - include traffic if available
+    has_traffic = Enum.any?(results, fn r -> r.traffic end)
+
+    header =
+      if has_traffic do
+        "Keyword,Traffic,Result Count\n"
+      else
+        "Keyword,Result Count\n"
+      end
 
     rows =
       results
       |> Enum.map(fn result ->
-        "\"#{result.keyword}\",#{result.result_count}\n"
+        if result.traffic do
+          "\"#{result.keyword}\",#{result.traffic},#{result.result_count}\n"
+        else
+          "\"#{result.keyword}\",#{result.result_count}\n"
+        end
       end)
       |> Enum.join()
 
@@ -369,12 +409,82 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
     {content, filename, "text/csv"}
   end
 
+  defp generate_example_xlsx do
+    filename = "check_all_in_title_example.xlsx"
+
+    # Create example data with 10 rows - each word from "this is your keyword list to check all in title"
+    example_data = [
+      ["Keyword", "Traffic"],
+      ["this", 1],
+      ["is", 2],
+      ["your", 3],
+      ["keyword", 4],
+      ["list", 5],
+      ["to", 6],
+      ["check", 7],
+      ["all", 8],
+      ["in", 9],
+      ["title", 10]
+    ]
+
+    workbook = %Elixlsx.Workbook{
+      sheets: [
+        %Elixlsx.Sheet{
+          name: "Keywords",
+          rows: example_data
+        }
+      ]
+    }
+
+    {:ok, {_filename, content}} = Elixlsx.write_to_memory(workbook, filename)
+
+    {content, filename, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
+  end
+
+  defp generate_example_csv do
+    filename = "check_all_in_title_example.csv"
+
+    # Create example CSV content with header and 10 rows - each word on its own row
+    content = """
+    Keyword,Traffic
+    this,1
+    is,2
+    your,3
+    keyword,4
+    list,5
+    to,6
+    check,7
+    all,8
+    in,9
+    title,10
+    """
+
+    {content, filename, "text/csv"}
+  end
+
   defp parse_file(path, "text/csv") do
     path
     |> File.stream!()
     |> NimbleCSV.RFC4180.parse_stream(skip_headers: false)
-    |> Stream.map(fn row -> List.first(row) end)
     |> Enum.to_list()
+    |> case do
+      [] ->
+        []
+
+      [_header | rows] ->
+        # Skip header and extract keyword (first column) and traffic (second column)
+        rows
+        |> Enum.map(fn row ->
+          keyword = Enum.at(row, 0)
+          traffic = Enum.at(row, 1)
+
+          %{
+            keyword: keyword,
+            traffic: parse_traffic(traffic)
+          }
+        end)
+        |> Enum.filter(fn %{keyword: keyword} -> keyword != nil and keyword != "" end)
+    end
   end
 
   defp parse_file(path, _type) do
@@ -383,7 +493,24 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
       {:ok, table_id} ->
         data =
           Xlsxir.get_list(table_id)
-          |> Enum.map(fn row -> List.first(row) end)
+          |> case do
+            [] ->
+              []
+
+            [_header | rows] ->
+              # Skip header and extract keyword (first column) and traffic (second column)
+              rows
+              |> Enum.map(fn row ->
+                keyword = Enum.at(row, 0)
+                traffic = Enum.at(row, 1)
+
+                %{
+                  keyword: to_string(keyword),
+                  traffic: parse_traffic(traffic)
+                }
+              end)
+              |> Enum.filter(fn %{keyword: keyword} -> keyword != nil and keyword != "" end)
+          end
 
         Xlsxir.close(table_id)
         data
@@ -392,6 +519,20 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
         []
     end
   end
+
+  defp parse_traffic(nil), do: nil
+  defp parse_traffic(""), do: nil
+
+  defp parse_traffic(traffic) when is_integer(traffic), do: traffic
+
+  defp parse_traffic(traffic) when is_binary(traffic) do
+    case Integer.parse(traffic) do
+      {num, _} -> num
+      :error -> nil
+    end
+  end
+
+  defp parse_traffic(_), do: nil
 
   @impl true
   def render(assigns) do

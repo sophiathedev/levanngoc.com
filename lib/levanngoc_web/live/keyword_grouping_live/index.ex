@@ -1,7 +1,9 @@
 defmodule LevanngocWeb.KeywordGroupingLive.Index do
   use LevanngocWeb, :live_view
 
-  import LevanngocWeb.LiveHelpers
+  alias Levanngoc.Settings.AdminSetting
+  alias Levanngoc.Accounts
+  import Number.Delimit
 
   @impl true
   def mount(_params, _session, socket) do
@@ -19,15 +21,16 @@ defmodule LevanngocWeb.KeywordGroupingLive.Index do
      socket
      |> assign(:is_logged_in, is_logged_in)
      |> assign(:show_login_required_modal, !is_logged_in)
-     |> assign(:uploaded_files, [])
      |> assign(:is_processing, false)
      |> assign(:timer_text, "00:00:00.0")
      |> assign(:start_time, nil)
      |> assign(:show_result_modal, false)
-     |> assign(:is_edit_mode, true)
+     |> assign(:show_confirm_modal, false)
+     |> assign(:cost_details, nil)
      |> assign(:project_name, "")
+     |> assign(:similarity_threshold, "0.4")
      |> assign(:keywords_input, "")
-     |> allow_upload(:file, accept: ~w(.xlsx .csv), max_entries: 1, max_file_size: 32_000_000)}
+     |> assign(:original_keyword_order, [])}
   end
 
   @impl true
@@ -36,75 +39,132 @@ defmodule LevanngocWeb.KeywordGroupingLive.Index do
   end
 
   @impl true
-  def handle_event("cancel-upload", %{"ref" => ref}, socket) do
-    {:noreply, cancel_upload(socket, :file, ref)}
-  end
-
-  @impl true
   def handle_event("save", _params, socket) do
-    # Parse keywords immediately
-    is_edit_mode = socket.assigns.is_edit_mode
+    # Parse keywords from input
     keywords_input = socket.assigns.keywords_input
+    similarity_threshold_str = socket.assigns.similarity_threshold
 
     keywords =
-      if is_edit_mode do
-        # Parse manual keywords - split by newlines and filter empty
-        keywords_input
-        |> String.split("\n")
-        |> Enum.map(&String.trim/1)
-        |> Enum.filter(&(&1 != ""))
-      else
-        # Parse from uploaded file
-        uploaded_files =
-          consume_uploaded_entries(socket, :file, fn %{path: path}, entry ->
-            parse_file(path, entry.client_type)
-          end)
-
-        List.flatten(uploaded_files)
-      end
+      keywords_input
+      |> String.split("\n")
+      |> Enum.map(&String.trim/1)
+      |> Enum.filter(&(&1 != ""))
 
     total_keywords = length(keywords)
+
+    # Validate similarity threshold
+    similarity_threshold =
+      case Float.parse(similarity_threshold_str) do
+        {value, _} when value >= 0.1 and value <= 1.0 -> value
+        _ -> 0.4
+      end
 
     if total_keywords == 0 do
       {:noreply, put_flash(socket, :error, "Vui lòng nhập ít nhất một từ khóa")}
     else
-      # Start processing directly without confirmation
-      socket =
-        socket
-        |> assign(:is_processing, true)
-        |> assign(:start_time, DateTime.utc_now())
-        |> assign(:timer_text, "00:00:00.0")
+      # Get admin settings for API key and token usage
+      admin_setting = Levanngoc.Repo.all(Levanngoc.Settings.AdminSetting)
 
-      # Start timer
-      :timer.send_interval(100, self(), :tick)
+      case admin_setting do
+        [%Levanngoc.Settings.AdminSetting{scraping_dog_api_key: api_key} | _]
+        when is_binary(api_key) and api_key != "" ->
+          # Get token usage for keyword grouping
+          token_usage_keyword_grouping =
+            case admin_setting do
+              [%AdminSetting{token_usage_keyword_grouping: usage} | _] when is_integer(usage) ->
+                usage
 
-      # Process in async task to allow UI updates
-      pid = self()
+              _ ->
+                0
+            end
 
-      Task.start(fn ->
-        # This is a placeholder - implement your keyword grouping logic here
-        # For now, just randomly group keywords
-        groups = group_keywords(keywords)
-        send(pid, {:processing_complete, [{nil, groups}]})
-      end)
+          # Calculate cost
+          total_cost = total_keywords * token_usage_keyword_grouping
+          current_token_amount = socket.assigns.current_scope.user.token_amount || 0
+          remaining_tokens = current_token_amount - total_cost
 
-      {:noreply, socket}
+          cost_details = %{
+            total_keywords: total_keywords,
+            token_usage_per_keyword: token_usage_keyword_grouping,
+            total_cost: total_cost,
+            current_token_amount: current_token_amount,
+            remaining_tokens: remaining_tokens
+          }
+
+          {:noreply,
+           socket
+           |> assign(:cost_details, cost_details)
+           |> assign(:keywords_to_process, keywords)
+           |> assign(:similarity_threshold_value, similarity_threshold)
+           |> assign(:api_key, api_key)
+           |> assign(:show_confirm_modal, true)}
+
+        _ ->
+          {:noreply, put_flash(socket, :error, "Cấu hình hệ thống lỗi, vui lòng thử lại sau.")}
+      end
     end
   end
 
   @impl true
-  def handle_event("switch_to_edit_mode", _params, socket) do
-    {:noreply, assign(socket, :is_edit_mode, true)}
+  def handle_event("confirm_grouping", _params, socket) do
+    keywords = socket.assigns.keywords_to_process
+    api_key = socket.assigns.api_key
+    similarity_threshold = socket.assigns.similarity_threshold_value
+    total_cost = socket.assigns.cost_details.total_cost
+    current_user = socket.assigns.current_scope.user
+
+    case Accounts.deduct_user_tokens(current_user, total_cost) do
+      {:ok, updated_user} ->
+        # Update current_scope with the new user state
+        current_scope = %{socket.assigns.current_scope | user: updated_user}
+
+        socket =
+          socket
+          |> assign(:current_scope, current_scope)
+          |> assign(:show_confirm_modal, false)
+          |> assign(:is_processing, true)
+          |> assign(:start_time, DateTime.utc_now())
+          |> assign(:timer_text, "00:00:00.0")
+          |> assign(:original_keyword_order, keywords)
+
+        # Start timer
+        :timer.send_interval(100, self(), :tick)
+
+        # Process in async task to allow UI updates
+        pid = self()
+
+        Task.start(fn ->
+          groups = group_keywords(keywords, api_key, similarity_threshold)
+          send(pid, {:processing_complete, [{nil, groups}]})
+        end)
+
+        {:noreply, socket}
+
+      {:error, _changeset} ->
+        {:noreply,
+         socket
+         |> assign(:show_confirm_modal, false)
+         |> put_flash(:error, "Có lỗi xảy ra khi trừ token. Vui lòng thử lại.")}
+    end
   end
 
   @impl true
-  def handle_event("switch_to_file_mode", _params, socket) do
-    {:noreply, assign(socket, :is_edit_mode, false)}
+  def handle_event("cancel_grouping", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_confirm_modal, false)
+     |> assign(:cost_details, nil)
+     |> assign(:keywords_to_process, [])}
   end
 
   @impl true
   def handle_event("update_project_name", %{"project_name" => project_name}, socket) do
     {:noreply, assign(socket, :project_name, project_name)}
+  end
+
+  @impl true
+  def handle_event("update_similarity_threshold", %{"similarity_threshold" => threshold}, socket) do
+    {:noreply, assign(socket, :similarity_threshold, threshold)}
   end
 
   @impl true
@@ -128,15 +188,17 @@ defmodule LevanngocWeb.KeywordGroupingLive.Index do
   @impl true
   def handle_event("download", %{"format" => format}, socket) do
     results = socket.assigns.grouping_results
+    original_order = socket.assigns[:original_keyword_order] || []
+    project_name = socket.assigns.project_name
 
     # Generate file content based on format
     {content, filename, _content_type} =
       case format do
         "xlsx" ->
-          generate_xlsx(results)
+          generate_xlsx(results, original_order, project_name)
 
         "csv" ->
-          generate_csv(results)
+          generate_csv(results, original_order, project_name)
       end
 
     {:noreply,
@@ -181,8 +243,6 @@ defmodule LevanngocWeb.KeywordGroupingLive.Index do
     {:noreply,
      socket
      |> assign(:is_processing, false)
-     # Clear uploaded files after processing
-     |> assign(:uploaded_files, [])
      |> assign(:grouping_results, all_results)
      |> assign(:processing_time, processing_time)
      |> assign(:show_result_modal, true)}
@@ -192,36 +252,208 @@ defmodule LevanngocWeb.KeywordGroupingLive.Index do
     num |> Integer.to_string() |> String.pad_leading(2, "0")
   end
 
-  # Placeholder keyword grouping logic
-  # Replace this with your actual grouping algorithm
-  defp group_keywords(keywords) do
-    # Simple grouping by first letter (replace with actual logic)
-    keywords
-    |> Enum.group_by(fn keyword ->
-      String.first(keyword) |> String.upcase()
-    end)
-    |> Enum.map(fn {group_name, keywords_in_group} ->
-      %{
-        group_name: "Nhóm #{group_name}",
-        keywords: keywords_in_group,
-        count: length(keywords_in_group)
-      }
-    end)
-  end
+  # Keyword grouping logic based on SERP overlap
+  defp group_keywords(keywords, api_key, similarity_threshold) do
+    # Step 1: Scrape SERP data for all keywords
+    IO.puts("Starting SERP scraping for #{length(keywords)} keywords...")
 
-  defp generate_xlsx(results) do
-    timestamp = format_timestamp(to_ho_chi_minh_time(DateTime.utc_now()))
-    filename = "keyword_grouping_#{timestamp}.xlsx"
+    scraping_dog =
+      %Levanngoc.External.ScrapingDog{}
+      |> Levanngoc.External.ScrapingDog.put_apikey(api_key)
 
-    # Create workbook with Elixlsx
-    rows =
-      results
-      |> Enum.flat_map(fn group ->
-        [["#{group.group_name} (#{group.count} từ khóa)", ""]] ++
-          Enum.map(group.keywords, fn kw -> ["", kw] end)
+    serp_data =
+      keywords
+      |> Task.async_stream(
+        fn keyword ->
+          IO.puts("Scraping SERP for: #{keyword}")
+
+          results =
+            try do
+              Levanngoc.External.ScrapingDog.scrape_serp_for_grouping(scraping_dog, keyword)
+            rescue
+              e ->
+                IO.puts("Error scraping '#{keyword}': #{inspect(e)}")
+                []
+            end
+
+          {keyword, results}
+        end,
+        max_concurrency: 20,
+        timeout: :infinity
+      )
+      |> Enum.map(fn {:ok, result} -> result end)
+      |> Map.new()
+
+    IO.puts("Completed SERP scraping. Starting grouping...")
+
+    # Step 2: Calculate required common links based on threshold
+    # Assuming max 10 organic results from ScrapingDog
+    estimated_max_results = 10
+    required_common_links = round(similarity_threshold * estimated_max_results)
+    required_common_links = if required_common_links == 0, do: 1, else: required_common_links
+
+    IO.puts("Required common links: #{required_common_links}")
+
+    # Step 3: Group keywords using BFS algorithm
+    {groups, _} =
+      keywords
+      |> Enum.reduce({[], MapSet.new()}, fn keyword, {groups_acc, processed} ->
+        if MapSet.member?(processed, keyword) do
+          {groups_acc, processed}
+        else
+          # Start a new group with this keyword as seed
+          {group_keywords, new_processed} =
+            bfs_group_keywords(
+              [keyword],
+              MapSet.new(),
+              keywords,
+              processed,
+              serp_data,
+              required_common_links
+            )
+
+          group_id = length(groups_acc) + 1
+
+          group = %{
+            group_name: "Nhóm #{group_id}",
+            keywords: group_keywords,
+            count: length(group_keywords)
+          }
+
+          {[group | groups_acc], new_processed}
+        end
       end)
 
-    sheet = [["Nhóm", "Từ khóa"] | rows]
+    IO.puts("Grouping completed. Found #{length(groups)} groups.")
+
+    Enum.reverse(groups)
+  end
+
+  # BFS algorithm to find all related keywords
+  defp bfs_group_keywords(queue, group_keywords, all_keywords, processed, serp_data, threshold) do
+    case queue do
+      [] ->
+        {MapSet.to_list(group_keywords), processed}
+
+      [seed_keyword | rest_queue] ->
+        if MapSet.member?(processed, seed_keyword) do
+          bfs_group_keywords(rest_queue, group_keywords, all_keywords, processed, serp_data, threshold)
+        else
+          # Add seed to group and mark as processed
+          group_keywords = MapSet.put(group_keywords, seed_keyword)
+          processed = MapSet.put(processed, seed_keyword)
+
+          # Get SERP links for seed keyword
+          seed_links = get_serp_links(serp_data, seed_keyword)
+
+          if MapSet.size(seed_links) == 0 do
+            IO.puts("  - '#{seed_keyword}' has no SERP links, skipping comparison")
+            bfs_group_keywords(rest_queue, group_keywords, all_keywords, processed, serp_data, threshold)
+          else
+            # Find related keywords using Task.async_stream for parallel processing
+            candidates =
+              all_keywords
+              |> Enum.filter(fn candidate ->
+                not MapSet.member?(processed, candidate)
+              end)
+
+            related_keywords =
+              candidates
+              |> Task.async_stream(
+                fn candidate ->
+                  candidate_links = get_serp_links(serp_data, candidate)
+
+                  if MapSet.size(candidate_links) == 0 do
+                    {candidate, false}
+                  else
+                    common_links = MapSet.intersection(seed_links, candidate_links)
+                    num_common = MapSet.size(common_links)
+
+                    if num_common >= threshold do
+                      IO.puts("  - Connected '#{seed_keyword}' and '#{candidate}' (#{num_common} common links)")
+                      {candidate, true}
+                    else
+                      {candidate, false}
+                    end
+                  end
+                end,
+                max_concurrency: 20,
+                timeout: :infinity
+              )
+              |> Enum.map(fn {:ok, result} -> result end)
+              |> Enum.filter(fn {_candidate, is_related} -> is_related end)
+              |> Enum.map(fn {candidate, _is_related} -> candidate end)
+
+            # Add related keywords to queue
+            new_queue = rest_queue ++ related_keywords
+
+            bfs_group_keywords(new_queue, group_keywords, all_keywords, processed, serp_data, threshold)
+          end
+        end
+    end
+  end
+
+  # Extract links from SERP data for a keyword
+  defp get_serp_links(serp_data, keyword) do
+    case Map.get(serp_data, keyword) do
+      nil ->
+        MapSet.new()
+
+      results ->
+        results
+        |> Enum.map(fn result -> Map.get(result, :link) end)
+        |> Enum.filter(fn link -> link != nil end)
+        |> MapSet.new()
+    end
+  end
+
+  defp generate_xlsx(results, original_keyword_order, project_name) do
+    timestamp = format_timestamp(to_ho_chi_minh_time(DateTime.utc_now()))
+
+    # Create filename from project name and timestamp
+    sanitized_project_name =
+      if project_name == "" do
+        "keyword_grouping"
+      else
+        project_name
+        |> String.trim()
+        |> String.replace(~r/[^\w\s-]/, "")
+        |> String.replace(~r/\s+/, "_")
+      end
+
+    filename = "#{sanitized_project_name}_#{timestamp}.xlsx"
+
+    # Sort groups by size (descending) to assign GROUP_X numbers
+    sorted_results =
+      results
+      |> Enum.sort_by(fn group -> {-group.count, group.group_name} end)
+      |> Enum.with_index(1)
+
+    # Create a mapping of keyword -> {group_id, parent}
+    keyword_to_group =
+      sorted_results
+      |> Enum.flat_map(fn {group, index} ->
+        group_id = "GROUP_#{index}"
+        parent = List.first(group.keywords, "")
+
+        group.keywords
+        |> Enum.map(fn keyword ->
+          {keyword, {group_id, parent}}
+        end)
+      end)
+      |> Map.new()
+
+    # Generate rows in original keyword order
+    rows =
+      original_keyword_order
+      |> Enum.map(fn keyword ->
+        case Map.get(keyword_to_group, keyword) do
+          {group_id, parent} -> [keyword, group_id, parent]
+          nil -> [keyword, "UNGROUPED", ""]
+        end
+      end)
+
+    sheet = [["Keyword", "Group", "Parent"] | rows]
 
     workbook = %Elixlsx.Workbook{
       sheets: [
@@ -251,42 +483,53 @@ defmodule LevanngocWeb.KeywordGroupingLive.Index do
     "#{datetime.year}#{pad_zero(datetime.month)}#{pad_zero(datetime.day)}#{pad_zero(datetime.hour)}#{pad_zero(datetime.minute)}#{pad_zero(datetime.second)}"
   end
 
-  defp parse_file(path, "text/csv") do
-    path
-    |> File.stream!()
-    |> NimbleCSV.RFC4180.parse_stream(skip_headers: false)
-    |> Stream.map(fn row -> List.first(row) end)
-    |> Enum.to_list()
-  end
-
-  defp parse_file(path, _type) do
-    # Assume XLSX if not CSV
-    case Xlsxir.multi_extract(path, 0) do
-      {:ok, table_id} ->
-        data =
-          Xlsxir.get_list(table_id)
-          |> Enum.map(fn row -> List.first(row) end)
-
-        Xlsxir.close(table_id)
-        data
-
-      _ ->
-        []
-    end
-  end
-
-  defp generate_csv(results) do
+  defp generate_csv(results, original_keyword_order, project_name) do
     timestamp = format_timestamp(to_ho_chi_minh_time(DateTime.utc_now()))
-    filename = "keyword_grouping_#{timestamp}.csv"
+
+    # Create filename from project name and timestamp
+    sanitized_project_name =
+      if project_name == "" do
+        "keyword_grouping"
+      else
+        project_name
+        |> String.trim()
+        |> String.replace(~r/[^\w\s-]/, "")
+        |> String.replace(~r/\s+/, "_")
+      end
+
+    filename = "#{sanitized_project_name}_#{timestamp}.csv"
+
+    # Sort groups by size (descending) to assign GROUP_X numbers
+    sorted_results =
+      results
+      |> Enum.sort_by(fn group -> {-group.count, group.group_name} end)
+      |> Enum.with_index(1)
+
+    # Create a mapping of keyword -> {group_id, parent}
+    keyword_to_group =
+      sorted_results
+      |> Enum.flat_map(fn {group, index} ->
+        group_id = "GROUP_#{index}"
+        parent = List.first(group.keywords, "")
+
+        group.keywords
+        |> Enum.map(fn keyword ->
+          {keyword, {group_id, parent}}
+        end)
+      end)
+      |> Map.new()
 
     # Create CSV content
-    header = "Nhóm,Từ khóa\n"
+    header = "Keyword,Group,Parent\n"
 
+    # Generate rows in original keyword order
     rows =
-      results
-      |> Enum.flat_map(fn group ->
-        ["\"#{group.group_name} (#{group.count} từ khóa)\",\"\"\n"] ++
-          Enum.map(group.keywords, fn kw -> "\"\",\"#{kw}\"\n" end)
+      original_keyword_order
+      |> Enum.map(fn keyword ->
+        case Map.get(keyword_to_group, keyword) do
+          {group_id, parent} -> "\"#{keyword}\",\"#{group_id}\",\"#{parent}\"\n"
+          nil -> "\"#{keyword}\",\"UNGROUPED\",\"\"\n"
+        end
       end)
       |> Enum.join()
 
@@ -302,172 +545,168 @@ defmodule LevanngocWeb.KeywordGroupingLive.Index do
       <h1 class="text-3xl font-bold mb-6">Gom nhóm từ khóa</h1>
 
       <div class="card bg-base-100 shadow-xl mb-6 border border-base-300 flex-1">
-        <div class="card-body flex flex-col p-0">
-          <!-- Tabs -->
-          <div role="tablist" class="tabs tabs-border mb-0">
-            <button
-              type="button"
-              role="tab"
-              class={[
-                "tab",
-                (@is_edit_mode && "tab-active") || "opacity-60"
-              ]}
-              phx-click="switch_to_edit_mode"
-              disabled={!@is_logged_in or @is_processing}
-            >
-              Chế độ chỉnh sửa
-            </button>
-            <button
-              type="button"
-              role="tab"
-              class={[
-                "tab",
-                (!@is_edit_mode && "tab-active") || "opacity-60"
-              ]}
-              phx-click="switch_to_file_mode"
-              disabled={!@is_logged_in or @is_processing}
-            >
-              Chế độ File
-            </button>
-          </div>
+        <div class="card-body flex flex-col p-4">
+          <form phx-change="validate" phx-submit="save" class="flex flex-col flex-1">
+            <div class="flex gap-4 mb-4">
+              <div class="form-control w-[80%]">
+                <label class="label mb-2">
+                  <span class="label-text">Tên dự án</span>
+                </label>
+                <input
+                  type="text"
+                  class="input w-full rounded-lg"
+                  placeholder="Nhập tên dự án"
+                  value={@project_name}
+                  phx-change="update_project_name"
+                  name="project_name"
+                  disabled={!@is_logged_in or @is_processing}
+                />
+              </div>
 
-          <form phx-change="validate" phx-submit="save" class="flex flex-col flex-1 p-4">
-            <div class="form-control w-full mb-4">
-              <label class="label mb-2">
-                <span class="label-text">Tên dự án</span>
-              </label>
-              <input
-                type="text"
-                class="input w-full rounded-lg"
-                placeholder="Nhập tên dự án"
-                value={@project_name}
-                phx-change="update_project_name"
-                name="project_name"
-                disabled={!@is_logged_in or @is_processing}
-              />
+              <div class="form-control w-[20%]">
+                <label class="label mb-2">
+                  <span class="label-text">Ngưỡng độ tương đồng</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  max="1.0"
+                  class="input w-full rounded-lg"
+                  placeholder="Nhập ngưỡng độ tương đồng (0.1 - 1.0)"
+                  value={@similarity_threshold}
+                  phx-change="update_similarity_threshold"
+                  name="similarity_threshold"
+                  disabled={!@is_logged_in or @is_processing}
+                />
+              </div>
             </div>
 
-            <div class="flex flex-col flex-1">
-              <%= if @is_edit_mode do %>
-                <div class="form-control w-full flex flex-col flex-1">
-                  <label class="label mb-2">
-                    <span class="label-text">
-                      Danh sách từ khóa để gom nhóm (mỗi từ khóa trên một dòng)
-                    </span>
-                  </label>
-                  <textarea
-                    id="keywords-input"
-                    class="w-full flex-1 textarea textarea-bordered rounded-lg"
-                    placeholder="Nhập từ khóa, mỗi từ khóa một dòng&#10;Ví dụ:&#10;seo tools&#10;keyword research&#10;backlink checker"
-                    phx-change="update_keywords"
-                    name="keywords"
-                    phx-hook="AutoResize"
-                    disabled={!@is_logged_in or @is_processing}
-                  >{@keywords_input}</textarea>
-                </div>
-              <% else %>
-                <div class="form-control w-full flex flex-col flex-1">
-                  <label class="label mb-2">
-                    <span class="label-text">Chọn file (xlsx, csv)</span>
-                  </label>
+            <div class="form-control w-full flex flex-col flex-1">
+              <label class="label mb-2">
+                <span class="label-text">
+                  Danh sách từ khóa để gom nhóm (mỗi từ khóa trên một dòng)
+                </span>
+              </label>
+              <textarea
+                id="keywords-input"
+                class="w-full flex-1 textarea textarea-bordered rounded-lg"
+                placeholder="Nhập từ khóa, mỗi từ khóa một dòng&#10;Ví dụ:&#10;seo tools&#10;keyword research&#10;backlink checker"
+                phx-change="update_keywords"
+                name="keywords"
+                phx-hook="AutoResize"
+                disabled={!@is_logged_in or @is_processing}
+              >{@keywords_input}</textarea>
+            </div>
 
-                  <div
-                    class="flex items-center justify-center w-full flex-1"
-                    phx-drop-target={@uploads.file.ref}
-                  >
-                    <label
-                      for={@uploads.file.ref}
-                      class={"flex flex-col items-center justify-center w-full h-full border-2 border-dashed rounded-lg cursor-pointer bg-base-50 hover:bg-base-200 border-base-300 relative #{if !@is_logged_in or @is_processing, do: "opacity-50 pointer-events-none", else: ""}"}
-                    >
-                      <%= if @uploads.file.entries == [] do %>
-                        <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                          <svg
-                            class="w-8 h-8 mb-4 text-base-content/50"
-                            aria-hidden="true"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 20 16"
-                          >
-                            <path
-                              stroke="currentColor"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"
-                            />
-                          </svg>
-                          <p class="mb-2 text-sm text-base-content/70">
-                            <span class="font-semibold">Click để upload</span> hoặc kéo thả
-                          </p>
-                          <p class="text-xs text-base-content/50">XLSX, CSV (Max 32MB)</p>
-                        </div>
-                      <% else %>
-                        <%= for entry <- @uploads.file.entries do %>
-                          <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              class="w-12 h-12 mb-4 text-success"
-                            >
-                              <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                              />
-                            </svg>
-                            <p class="mb-2 text-lg font-semibold text-base-content">
-                              {entry.client_name}
-                            </p>
-                            <p class="text-sm text-base-content/70">
-                              {humanize_size(entry.client_size)}
-                              <%= if entry.progress > 0 do %>
-                                - {entry.progress}%
-                              <% end %>
-                            </p>
-                            <p class="mt-4 text-xs text-base-content/50">
-                              Click hoặc kéo thả để thay thế file khác
-                            </p>
-                          </div>
-                        <% end %>
-                      <% end %>
-                      <.live_file_input
-                        upload={@uploads.file}
-                        class="hidden"
-                        disabled={!@is_logged_in or @is_processing}
-                      />
-                    </label>
-                  </div>
-                </div>
-              <% end %>
-
-              <%= for entry <- @uploads.file.entries do %>
-                <%= for err <- upload_errors(@uploads.file, entry) do %>
-                  <div class="alert alert-error mt-2">
-                    <span>{error_to_string(err)}</span>
-                  </div>
+            <div class="mt-4 flex justify-end items-center">
+              <button
+                type="submit"
+                class="btn btn-primary min-w-[160px]"
+                disabled={!@is_logged_in or @is_processing or @keywords_input == ""}
+              >
+                <%= if @is_processing do %>
+                  {@timer_text}
+                <% else %>
+                  Gom nhóm
                 <% end %>
-              <% end %>
-
-              <div class="mt-4 flex justify-end items-center">
-                <button
-                  type="submit"
-                  class="btn btn-primary min-w-[160px]"
-                  disabled={true}
-                >
-                  <%= if @is_processing do %>
-                    {@timer_text}
-                  <% else %>
-                    Upload & Gom nhóm
-                  <% end %>
-                </button>
-              </div>
+              </button>
             </div>
           </form>
         </div>
       </div>
     </div>
+
+    <%= if @show_confirm_modal do %>
+      <div class="modal modal-open">
+        <div class="modal-box">
+          <h3 class="font-bold text-lg mb-4">Xác nhận sử dụng Token</h3>
+
+          <div class="py-4 space-y-4">
+            <p>Hành động này sẽ tiêu tốn token của bạn. Vui lòng xác nhận trước khi tiếp tục.</p>
+
+            <div class="bg-base-200 p-4 rounded-lg space-y-2">
+              <div class="flex justify-between">
+                <span>Số lượng từ khóa:</span>
+                <span class="font-bold">
+                  {number_to_delimited(@cost_details.total_keywords, precision: 0)}
+                </span>
+              </div>
+              <div class="flex justify-between">
+                <span>Chi phí mỗi từ khóa:</span>
+                <span class="font-bold">
+                  {number_to_delimited(@cost_details.token_usage_per_keyword, precision: 0)} token<%= if @cost_details.token_usage_per_keyword >
+                    1 do %>s<% end %>
+                </span>
+              </div>
+              <div class="divider my-1"></div>
+              <div class="flex justify-between text-lg">
+                <span>Tổng chi phí:</span>
+                <span class="font-bold text-error">
+                  -{number_to_delimited(@cost_details.total_cost, precision: 0)} token
+                </span>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-center space-x-4 text-lg font-medium">
+              <div class="text-center">
+                <div class="text-sm opacity-70">Hiện tại</div>
+                <div>{number_to_delimited(@cost_details.current_token_amount, precision: 0)}</div>
+              </div>
+              <div class="text-2xl">-</div>
+              <div class="text-center">
+                <div class="text-sm opacity-70">Chi phí</div>
+                <div class="text-error">
+                  {number_to_delimited(@cost_details.total_cost, precision: 0)}
+                </div>
+              </div>
+              <div class="text-2xl">=</div>
+              <div class="text-center">
+                <div class="text-sm opacity-70">Còn lại</div>
+                <div class={
+                  if @cost_details.remaining_tokens < 0, do: "text-error", else: "text-success"
+                }>
+                  {number_to_delimited(@cost_details.remaining_tokens, precision: 0)}
+                </div>
+              </div>
+            </div>
+
+            <%= if @cost_details.remaining_tokens < 0 do %>
+              <div class="alert alert-error">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="stroke-current shrink-0 h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span>Bạn không đủ token để thực hiện hành động này.</span>
+              </div>
+            <% end %>
+          </div>
+
+          <div class="modal-action">
+            <%= if @cost_details.remaining_tokens < 0 do %>
+              <.link href={~p"/users/billing"} class="btn btn-success">
+                Tôi muốn nâng cấp gói
+              </.link>
+              <button class="btn btn-primary" phx-click="cancel_grouping">Đã hiểu!</button>
+            <% else %>
+              <button class="btn" phx-click="cancel_grouping">Hủy bỏ</button>
+              <button class="btn btn-primary" phx-click="confirm_grouping">
+                Xác nhận & Tiếp tục
+              </button>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
 
     <%= if @show_result_modal do %>
       <div class="modal modal-open">

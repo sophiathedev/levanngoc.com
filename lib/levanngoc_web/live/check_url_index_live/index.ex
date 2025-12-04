@@ -382,15 +382,20 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
   end
 
   defp generate_example_xlsx do
-    filename = "url_check_example.xlsx"
+    filename = "check_url_index_example.xlsx"
 
-    # Create example data
+    # Create example data with 10 URLs
     example_urls = [
-      ["https://example.com/page1"],
-      ["https://example.com/page2"],
-      ["https://example.com/page3"],
-      ["https://example.com/page4"],
-      ["https://example.com/page5"]
+      ["https://url1.com"],
+      ["https://url2.com"],
+      ["https://url3.com"],
+      ["https://url4.com"],
+      ["https://url5.com"],
+      ["https://url6.com"],
+      ["https://url7.com"],
+      ["https://url8.com"],
+      ["https://url9.com"],
+      ["https://url10.com"]
     ]
 
     workbook = %Elixlsx.Workbook{
@@ -408,15 +413,20 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
   end
 
   defp generate_example_csv do
-    filename = "url_check_example.csv"
+    filename = "check_url_index_example.csv"
 
-    # Create example CSV content
+    # Create example CSV content with 10 URLs
     content = """
-    https://example.com/page1
-    https://example.com/page2
-    https://example.com/page3
-    https://example.com/page4
-    https://example.com/page5
+    https://url1.com
+    https://url2.com
+    https://url3.com
+    https://url4.com
+    https://url5.com
+    https://url6.com
+    https://url7.com
+    https://url8.com
+    https://url9.com
+    https://url10.com
     """
 
     {content, filename, "text/csv"}

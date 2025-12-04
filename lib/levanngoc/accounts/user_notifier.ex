@@ -5,13 +5,29 @@ defmodule Levanngoc.Accounts.UserNotifier do
   alias Levanngoc.Accounts.User
   alias Levanngoc.Repo
   alias Levanngoc.EmailTemplate
+  alias Levanngoc.Settings.MailgunCache
+
+  # Get the from email address from Mailgun settings or use default
+  defp get_from_email do
+    case MailgunCache.get_mailgun_settings() do
+      {:ok, %{from_email: from_email}} ->
+        {"Levanngoc", from_email}
+
+      {:ok, %{domain: domain}} ->
+        # Fallback if from_email not in cache (old cache data)
+        {"Levanngoc", "noreply@#{domain}"}
+
+      {:error, :not_configured} ->
+        {"Levanngoc", "contact@example.com"}
+    end
+  end
 
   # Delivers the email using the application mailer.
   defp deliver(recipient, subject, body) do
     email =
       new()
       |> to(recipient)
-      |> from({"Levanngoc", "contact@example.com"})
+      |> from(get_from_email())
       |> subject(subject)
       |> text_body(body)
 
@@ -24,7 +40,7 @@ defmodule Levanngoc.Accounts.UserNotifier do
     email =
       new()
       |> to(recipient)
-      |> from({"Levanngoc", "contact@example.com"})
+      |> from(get_from_email())
       |> subject(subject)
       |> html_body(body)
 
