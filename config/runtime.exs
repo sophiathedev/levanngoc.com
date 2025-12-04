@@ -25,6 +25,16 @@ config :levanngoc,
        System.get_env("GOOGLE_APPLICATION_CREDENTIALS")
 
 if config_env() == :prod do
+  # Configure logger for production to avoid I/O errors
+  # Disable standard_error handler which can cause issues in daemon mode
+  config :logger, :default_handler,
+    config: %{
+      type: {:file, ~c"production.log"},
+      max_no_bytes: 10_000_000,
+      max_no_files: 5,
+      compress_on_rotate: true
+    }
+
   database_url =
     System.get_env("DATABASE_URL") ||
       raise """

@@ -18,10 +18,15 @@ config :swoosh, local: false
 
 # Do not print debug messages in production
 config :logger,
+  level: :info,
+  backends: []
+
+# Disable default console logger in production to avoid I/O errors
+config :logger, :default_handler,
   level: :info
 
 config :logger, :file_log,
-  path: "development.log",
+  path: "production.log",
   level: :info,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]
