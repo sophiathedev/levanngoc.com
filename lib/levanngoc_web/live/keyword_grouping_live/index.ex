@@ -124,11 +124,7 @@ defmodule LevanngocWeb.KeywordGroupingLive.Index do
           |> assign(:show_confirm_modal, false)
           |> assign(:is_processing, true)
           |> assign(:start_time, DateTime.utc_now())
-          |> assign(:timer_text, "00:00:00.0")
           |> assign(:original_keyword_order, keywords)
-
-        # Start timer
-        :timer.send_interval(100, self(), :tick)
 
         # Process in async task to allow UI updates
         pid = self()
@@ -209,26 +205,6 @@ defmodule LevanngocWeb.KeywordGroupingLive.Index do
   end
 
   @impl true
-  def handle_info(:tick, socket) do
-    if socket.assigns.is_processing do
-      now = DateTime.utc_now()
-      diff = DateTime.diff(now, socket.assigns.start_time, :millisecond)
-
-      hours = div(diff, 3600_000)
-      rem_h = rem(diff, 3600_000)
-      minutes = div(rem_h, 60_000)
-      rem_m = rem(rem_h, 60_000)
-      seconds = div(rem_m, 1000)
-      millis = rem(rem_m, 1000)
-      tenth = div(millis, 100)
-
-      timer_text = "#{pad(hours)}:#{pad(minutes)}:#{pad(seconds)}.#{tenth}"
-
-      {:noreply, assign(socket, :timer_text, timer_text)}
-    else
-      {:noreply, socket}
-    end
-  end
 
   def handle_info({:processing_complete, uploaded_files}, socket) do
     # uploaded_files is a list of {path, results}
@@ -238,7 +214,18 @@ defmodule LevanngocWeb.KeywordGroupingLive.Index do
       uploaded_files
       |> Enum.flat_map(fn {_path, results} -> results end)
 
-    processing_time = socket.assigns.timer_text
+    now = DateTime.utc_now()
+    diff = DateTime.diff(now, socket.assigns.start_time, :millisecond)
+
+    hours = div(diff, 3600_000)
+    rem_h = rem(diff, 3600_000)
+    minutes = div(rem_h, 60_000)
+    rem_m = rem(rem_h, 60_000)
+    seconds = div(rem_m, 1000)
+    millis = rem(rem_m, 1000)
+    tenth = div(millis, 100)
+
+    processing_time = "#{pad(hours)}:#{pad(minutes)}:#{pad(seconds)}.#{tenth}"
 
     {:noreply,
      socket
@@ -330,7 +317,14 @@ defmodule LevanngocWeb.KeywordGroupingLive.Index do
   end
 
   # BFS algorithm to find all related keywords
-  @spec bfs_group_keywords(list(String.t()), MapSet.t(String.t()), list(String.t()), MapSet.t(String.t()), map(), integer()) :: {list(String.t()), MapSet.t(String.t())}
+  @spec bfs_group_keywords(
+          list(String.t()),
+          MapSet.t(String.t()),
+          list(String.t()),
+          MapSet.t(String.t()),
+          map(),
+          integer()
+        ) :: {list(String.t()), MapSet.t(String.t())}
   defp bfs_group_keywords(queue, group_keywords, all_keywords, processed, serp_data, threshold) do
     case queue do
       [] ->
@@ -338,7 +332,14 @@ defmodule LevanngocWeb.KeywordGroupingLive.Index do
 
       [seed_keyword | rest_queue] ->
         if MapSet.member?(processed, seed_keyword) do
-          bfs_group_keywords(rest_queue, group_keywords, all_keywords, processed, serp_data, threshold)
+          bfs_group_keywords(
+            rest_queue,
+            group_keywords,
+            all_keywords,
+            processed,
+            serp_data,
+            threshold
+          )
         else
           # Add seed to group and mark as processed
           group_keywords = MapSet.put(group_keywords, seed_keyword)
@@ -349,7 +350,15 @@ defmodule LevanngocWeb.KeywordGroupingLive.Index do
 
           if MapSet.size(seed_links) == 0 do
             IO.puts("  - '#{seed_keyword}' has no SERP links, skipping comparison")
-            bfs_group_keywords(rest_queue, group_keywords, all_keywords, processed, serp_data, threshold)
+
+            bfs_group_keywords(
+              rest_queue,
+              group_keywords,
+              all_keywords,
+              processed,
+              serp_data,
+              threshold
+            )
           else
             # Find related keywords using Task.async_stream for parallel processing
             candidates =
@@ -371,7 +380,10 @@ defmodule LevanngocWeb.KeywordGroupingLive.Index do
                     num_common = MapSet.size(common_links)
 
                     if num_common >= threshold do
-                      IO.puts("  - Connected '#{seed_keyword}' and '#{candidate}' (#{num_common} common links)")
+                      IO.puts(
+                        "  - Connected '#{seed_keyword}' and '#{candidate}' (#{num_common} common links)"
+                      )
+
                       {candidate, true}
                     else
                       {candidate, false}
@@ -388,7 +400,14 @@ defmodule LevanngocWeb.KeywordGroupingLive.Index do
             # Add related keywords to queue
             new_queue = rest_queue ++ related_keywords
 
-            bfs_group_keywords(new_queue, group_keywords, all_keywords, processed, serp_data, threshold)
+            bfs_group_keywords(
+              new_queue,
+              group_keywords,
+              all_keywords,
+              processed,
+              serp_data,
+              threshold
+            )
           end
         end
     end
@@ -607,7 +626,7 @@ defmodule LevanngocWeb.KeywordGroupingLive.Index do
                 disabled={!@is_logged_in or @is_processing or @keywords_input == ""}
               >
                 <%= if @is_processing do %>
-                  {@timer_text}
+                  <span class="loading loading-spinner"></span>
                 <% else %>
                   Gom nhóm
                 <% end %>
@@ -637,7 +656,9 @@ defmodule LevanngocWeb.KeywordGroupingLive.Index do
                 <span>Chi phí mỗi từ khóa:</span>
                 <span class="font-bold">
                   {number_to_delimited(@cost_details.token_usage_per_keyword, precision: 0)} token<%= if @cost_details.token_usage_per_keyword >
-                    1 do %>s<% end %>
+                    1 do %>
+                    s
+                  <% end %>
                 </span>
               </div>
               <div class="divider my-1"></div>

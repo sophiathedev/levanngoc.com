@@ -129,9 +129,6 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
           |> assign(:show_confirm_modal, false)
           |> assign(:is_processing, true)
           |> assign(:start_time, DateTime.utc_now())
-          |> assign(:timer_text, "00:00:00.0")
-
-        :timer.send_interval(100, self(), :tick)
 
         # Process in async task to allow UI updates
         pid = self()
@@ -263,27 +260,6 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
   end
 
   @impl true
-  def handle_info(:tick, socket) do
-    if socket.assigns.is_processing do
-      now = DateTime.utc_now()
-      diff = DateTime.diff(now, socket.assigns.start_time, :millisecond)
-
-      hours = div(diff, 3600_000)
-      rem_h = rem(diff, 3600_000)
-      minutes = div(rem_h, 60_000)
-      rem_m = rem(rem_h, 60_000)
-      seconds = div(rem_m, 1000)
-      millis = rem(rem_m, 1000)
-      tenth = div(millis, 100)
-
-      timer_text =
-        "#{pad(hours)}:#{pad(minutes)}:#{pad(seconds)}.#{tenth}"
-
-      {:noreply, assign(socket, :timer_text, timer_text)}
-    else
-      {:noreply, socket}
-    end
-  end
 
   def handle_info({:processing_complete, uploaded_files}, socket) do
     # uploaded_files is a list of {path, results}
@@ -297,7 +273,18 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
     indexed_count = Enum.count(all_results, fn r -> r.indexed end)
     not_indexed_count = total_urls - indexed_count
 
-    processing_time = socket.assigns.timer_text
+    now = DateTime.utc_now()
+    diff = DateTime.diff(now, socket.assigns.start_time, :millisecond)
+
+    hours = div(diff, 3600_000)
+    rem_h = rem(diff, 3600_000)
+    minutes = div(rem_h, 60_000)
+    rem_m = rem(rem_h, 60_000)
+    seconds = div(rem_m, 1000)
+    millis = rem(rem_m, 1000)
+    tenth = div(millis, 100)
+
+    processing_time = "#{pad(hours)}:#{pad(minutes)}:#{pad(seconds)}.#{tenth}"
 
     result_stats = %{
       total_urls: total_urls,
@@ -637,10 +624,10 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
                 }
               >
                 <%= if @is_processing do %>
-                  {@timer_text}
+                  <span class="loading loading-spinner"></span>
                 <% else %>
                   <%= if @is_edit_mode do %>
-                    Chỉnh sửa
+                    Kiểm tra
                   <% else %>
                     Upload & Kiểm tra
                   <% end %>

@@ -276,10 +276,6 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
               |> assign(:show_confirm_modal, false)
               |> assign(:is_processing, true)
               |> assign(:start_time, DateTime.utc_now())
-              |> assign(:timer_text, "00:00:00.0")
-
-            # Start timer
-            :timer.send_interval(100, self(), :tick)
 
             # Process keyword rankings in async task
             pid = self()
@@ -510,33 +506,24 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
   end
 
   @impl true
-  def handle_info(:tick, socket) do
-    if socket.assigns.is_processing do
-      now = DateTime.utc_now()
-      diff = DateTime.diff(now, socket.assigns.start_time, :millisecond)
-
-      hours = div(diff, 3600_000)
-      rem_h = rem(diff, 3600_000)
-      minutes = div(rem_h, 60_000)
-      rem_m = rem(rem_h, 60_000)
-      seconds = div(rem_m, 1000)
-      millis = rem(rem_m, 1000)
-      tenth = div(millis, 100)
-
-      timer_text = "#{pad(hours)}:#{pad(minutes)}:#{pad(seconds)}.#{tenth}"
-
-      {:noreply, assign(socket, :timer_text, timer_text)}
-    else
-      {:noreply, socket}
-    end
-  end
 
   def handle_info({:processing_complete, results, is_email_mode}, socket) do
     total_keywords = length(results)
     ranked_count = Enum.count(results, fn r -> r.rank != nil and r.rank != "Not found" end)
     not_ranked_count = total_keywords - ranked_count
 
-    processing_time = socket.assigns.timer_text
+    now = DateTime.utc_now()
+    diff = DateTime.diff(now, socket.assigns.start_time, :millisecond)
+
+    hours = div(diff, 3600_000)
+    rem_h = rem(diff, 3600_000)
+    minutes = div(rem_h, 60_000)
+    rem_m = rem(rem_h, 60_000)
+    seconds = div(rem_m, 1000)
+    millis = rem(rem_m, 1000)
+    tenth = div(millis, 100)
+
+    processing_time = "#{pad(hours)}:#{pad(minutes)}:#{pad(seconds)}.#{tenth}"
 
     result_stats = %{
       total_keywords: total_keywords,
@@ -1068,13 +1055,11 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
               <% end %>
 
               <button
-                class="btn btn-primary btn-md"
+                class="btn btn-primary btn-md relative"
                 phx-click="check_now"
                 disabled={!@is_logged_in or @total_entries == 0 or @is_processing}
               >
-                <%= if @is_processing do %>
-                  {@timer_text}
-                <% else %>
+                <span class={"flex items-center #{if @is_processing, do: "invisible", else: ""}"}>
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     class="h-5 w-5 mr-1"
@@ -1088,6 +1073,11 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
                     />
                   </svg>
                   Kiểm tra ngay
+                </span>
+                <%= if @is_processing do %>
+                  <div class="absolute inset-0 flex items-center justify-center">
+                    <span class="loading loading-spinner"></span>
+                  </div>
                 <% end %>
               </button>
             </div>
