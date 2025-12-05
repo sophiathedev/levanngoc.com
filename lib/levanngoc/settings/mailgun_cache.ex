@@ -41,7 +41,7 @@ defmodule Levanngoc.Settings.MailgunCache do
 
     should_refresh =
       is_nil(state.last_fetch) or
-        (now - state.last_fetch) > @cache_ttl
+        now - state.last_fetch > @cache_ttl
 
     if should_refresh do
       case fetch_mailgun_settings_from_db() do

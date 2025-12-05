@@ -330,10 +330,11 @@ defmodule LevanngocWeb.KeywordGroupingLive.Index do
   end
 
   # BFS algorithm to find all related keywords
+  @spec bfs_group_keywords(list(String.t()), MapSet.t(String.t()), list(String.t()), MapSet.t(String.t()), map(), integer()) :: {list(String.t()), MapSet.t(String.t())}
   defp bfs_group_keywords(queue, group_keywords, all_keywords, processed, serp_data, threshold) do
     case queue do
       [] ->
-        {MapSet.to_list(group_keywords), processed}
+        {Enum.to_list(group_keywords), processed}
 
       [seed_keyword | rest_queue] ->
         if MapSet.member?(processed, seed_keyword) do

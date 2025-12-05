@@ -84,8 +84,7 @@ config :phoenix_live_view,
   # Enable helpful, but potentially expensive runtime checks
   enable_expensive_runtime_checks: true
 
-# Enable swoosh api client to allow sending emails in development
-config :swoosh, Levanngoc.Mailer, adapter: Swoosh.Adapters.Local
+config :levanngoc, Levanngoc.Mailer, adapter: Swoosh.Adapters.Mailgun
 
 config :logger,
   level: :debug

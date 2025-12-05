@@ -10,6 +10,8 @@ defmodule Levanngoc.Mailer do
   Falls back to configured adapter if Mailgun is not configured.
   """
   def deliver(email) do
+    dbg(MailgunCache.get_mailgun_settings())
+
     case MailgunCache.get_mailgun_settings() do
       {:ok, %{api_key: api_key, domain: domain}} ->
         # Use Mailgun adapter with settings from database

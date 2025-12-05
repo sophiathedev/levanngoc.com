@@ -30,7 +30,9 @@ defmodule LevanngocWeb.AdminLive.UserManagement do
        password_form: nil,
        extending_user: nil,
        billing_prices: nil,
-       extend_form: nil
+       extend_form: nil,
+       creating_user: false,
+       create_form: nil
      )
      |> load_users(1, "")}
   end
@@ -86,6 +88,70 @@ defmodule LevanngocWeb.AdminLive.UserManagement do
 
   def handle_event("close_modal", _params, socket) do
     {:noreply, assign(socket, :editing_user, nil)}
+  end
+
+  def handle_event("open_create_modal", _params, socket) do
+    changeset = Accounts.change_user_registration(%User{})
+
+    {:noreply,
+     socket
+     |> assign(:creating_user, true)
+     |> assign(:create_form, to_form(changeset))}
+  end
+
+  def handle_event("close_create_modal", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:creating_user, false)
+     |> assign(:create_form, nil)}
+  end
+
+  def handle_event(
+        "validate_create_user",
+        %{"user" => user_params},
+        socket
+      ) do
+    changeset =
+      %User{}
+      |> Accounts.change_user_registration(user_params)
+      |> Map.put(:action, :validate)
+
+    {:noreply, assign(socket, :create_form, to_form(changeset))}
+  end
+
+  def handle_event("create_user", %{"user" => user_params}, socket) do
+    # Merge role into params, default to 0 if not provided
+    user_params = Map.put_new(user_params, "role", "0")
+
+    case Accounts.register_user(user_params) do
+      {:ok, user} ->
+        # If role is set to superuser or specific value, update it after creation
+        case Map.get(user_params, "role") do
+          role when role in ["999999", 999_999] ->
+            Accounts.update_user_admin(user, %{role: 999_999})
+
+          _ ->
+            :ok
+        end
+
+        {:noreply,
+         socket
+         |> put_flash(:info, "Tạo người dùng thành công")
+         |> assign(:creating_user, false)
+         |> assign(:create_form, nil)
+         |> then(
+           &apply_params(
+             %{
+               "search" => socket.assigns.search_query,
+               "page" => Integer.to_string(socket.assigns.page)
+             },
+             &1
+           )
+         )}
+
+      {:error, changeset} ->
+        {:noreply, assign(socket, :create_form, to_form(changeset))}
+    end
   end
 
   def handle_event("change_password_user", %{"id" => id}, socket) do
@@ -436,21 +502,40 @@ defmodule LevanngocWeb.AdminLive.UserManagement do
         </div>
       </div>
 
-      <div class="form-control w-full max-w-xs">
-        <form phx-change="search">
-          <input
-            name="search[query]"
-            type="text"
-            value={@search_query}
-            placeholder="Tìm kiếm theo email..."
-            class="input input-bordered w-full"
-            phx-debounce="300"
-          />
-        </form>
+      <div class="flex justify-between items-center">
+        <div class="form-control w-full max-w-xs">
+          <form phx-change="search">
+            <input
+              name="search[query]"
+              type="text"
+              value={@search_query}
+              placeholder="Tìm kiếm theo email..."
+              class="input input-bordered w-full"
+              phx-debounce="300"
+            />
+          </form>
+        </div>
+        <button class="btn btn-primary" phx-click="open_create_modal">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+          Thêm Người dùng
+        </button>
       </div>
 
       <div class="border border-base-300 rounded-lg shadow-lg bg-base-100">
-        <div class="overflow-x-auto">
+        <div class="overflow-visible">
           <table class="table w-full">
             <thead>
               <tr>
@@ -533,7 +618,7 @@ defmodule LevanngocWeb.AdminLive.UserManagement do
                       <% end %>
                     </td>
                     <td class="text-right">
-                      <div class="dropdown dropdown-end dropdown-top">
+                      <div class="dropdown dropdown-left">
                         <div tabindex="0" role="button" class="btn btn-ghost btn-circle btn-sm">
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -552,7 +637,7 @@ defmodule LevanngocWeb.AdminLive.UserManagement do
                         </div>
                         <ul
                           tabindex="0"
-                          class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52 border border-base-300"
+                          class="dropdown-content z-[9999] menu p-2 shadow bg-base-100 rounded-box w-52 border border-base-300"
                         >
                           <li>
                             <button phx-click="edit_user" phx-value-id={user.id}>
@@ -808,6 +893,74 @@ defmodule LevanngocWeb.AdminLive.UserManagement do
             </form>
           </div>
           <div class="modal-backdrop" phx-click="close_extend_modal"></div>
+        </div>
+      <% end %>
+
+      <%= if @creating_user do %>
+        <div class="modal modal-open backdrop-blur-sm">
+          <div class="modal-box">
+            <h3 class="font-bold text-lg">Thêm Người dùng</h3>
+            <.form
+              for={@create_form}
+              phx-change="validate_create_user"
+              phx-submit="create_user"
+              class="space-y-4 py-4"
+            >
+              <div class="form-control w-full">
+                <label class="label">
+                  <span class="label-text">Email</span>
+                </label>
+                <.input
+                  field={@create_form[:email]}
+                  type="email"
+                  class="input input-bordered w-full"
+                  phx-debounce="300"
+                />
+              </div>
+
+              <div class="form-control w-full">
+                <label class="label">
+                  <span class="label-text">Mật khẩu</span>
+                </label>
+                <.input
+                  field={@create_form[:password]}
+                  type="password"
+                  class="input input-bordered w-full"
+                  phx-debounce="300"
+                />
+              </div>
+
+              <div class="form-control w-full">
+                <label class="label">
+                  <span class="label-text">Xác nhận mật khẩu</span>
+                </label>
+                <.input
+                  field={@create_form[:password_confirmation]}
+                  type="password"
+                  class="input input-bordered w-full"
+                  phx-debounce="300"
+                />
+              </div>
+
+              <div class="form-control w-full">
+                <label class="label">
+                  <span class="label-text">Vai trò</span>
+                </label>
+                <.input
+                  field={@create_form[:role]}
+                  type="select"
+                  options={[{"Người dùng", 0}, {"Superuser", 999_999}]}
+                  class="select select-bordered w-full"
+                />
+              </div>
+
+              <div class="modal-action">
+                <button type="button" class="btn" phx-click="close_create_modal">Hủy</button>
+                <button type="submit" class="btn btn-primary">Tạo</button>
+              </div>
+            </.form>
+          </div>
+          <div class="modal-backdrop" phx-click="close_create_modal"></div>
         </div>
       <% end %>
     </div>

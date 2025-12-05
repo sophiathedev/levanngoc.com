@@ -164,6 +164,11 @@ defmodule LevanngocWeb.UserLive.Activation do
         {:ok, cached_otp} when cached_otp == otp ->
           # OTP is valid, get user data from cache
           case Cachex.get(:cache, "#{email}_user_data") do
+            {:ok, nil} ->
+              {:noreply,
+               socket
+               |> put_flash(:error, "Phiên đăng ký đã hết hạn. Vui lòng đăng ký lại.")}
+
             {:ok, user_data} ->
               # Create user account
               case Accounts.register_user(user_data) do
@@ -192,26 +197,21 @@ defmodule LevanngocWeb.UserLive.Activation do
                    |> put_flash(:error, "Không thể tạo tài khoản. Vui lòng thử lại.")}
               end
 
-            {:ok, nil} ->
-              {:noreply,
-               socket
-               |> put_flash(:error, "Phiên đăng ký đã hết hạn. Vui lòng đăng ký lại.")}
-
             _ ->
               {:noreply,
                socket
                |> put_flash(:error, "Không tìm thấy thông tin đăng ký. Vui lòng đăng ký lại.")}
           end
 
-        {:ok, _different_otp} ->
-          {:noreply,
-           socket
-           |> put_flash(:error, "Mã OTP không đúng. Vui lòng kiểm tra lại.")}
-
         {:ok, nil} ->
           {:noreply,
            socket
            |> put_flash(:error, "Mã OTP đã hết hạn. Vui lòng gửi lại mã OTP.")}
+
+        {:ok, _different_otp} ->
+          {:noreply,
+           socket
+           |> put_flash(:error, "Mã OTP không đúng. Vui lòng kiểm tra lại.")}
 
         _ ->
           {:noreply,
