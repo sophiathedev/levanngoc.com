@@ -89,8 +89,6 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
               parse_file(path, entry.client_type)
             end)
 
-          dbg(uploaded_files)
-
           List.flatten(uploaded_files)
         end
 

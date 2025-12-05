@@ -236,4 +236,87 @@ defmodule Levanngoc.Accounts.UserNotifier do
 
     deliver_html(email, subject, html_body)
   end
+
+  @doc """
+  Deliver keyword ranking report with Excel attachment.
+  """
+  def deliver_keyword_ranking_report(user, report_data, xlsx_content) do
+    # Get template from file
+    template_path = Application.app_dir(:levanngoc, "priv/template/keyword_ranking_report_email.html")
+    {:ok, html_content} = File.read(template_path)
+
+    # Replace placeholders with actual values
+    html_body =
+      html_content
+      |> String.replace("<<[email]>>", user.email)
+      |> String.replace("<<[total_keywords]>>", to_string(report_data.total_keywords))
+      |> String.replace("<<[ranked_count]>>", to_string(report_data.ranked_count))
+      |> String.replace("<<[not_ranked_count]>>", to_string(report_data.not_ranked_count))
+      |> String.replace("<<[processing_time]>>", report_data.processing_time)
+      |> String.replace("<<[timestamp]>>", report_data.timestamp_display)
+
+    subject = "[levanngoc.com] Báo cáo kiểm tra thứ hạng từ khóa"
+
+    # Create email with attachment
+    email =
+      new()
+      |> to(user.email)
+      |> from(get_from_email())
+      |> subject(subject)
+      |> html_body(html_body)
+      |> attachment(
+        Swoosh.Attachment.new(
+          {:data, xlsx_content},
+          filename: "keyword_ranking_report_#{report_data.timestamp}.xlsx",
+          content_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+      )
+
+    with {:ok, _metadata} <- Mailer.deliver(email) do
+      {:ok, email}
+    end
+  end
+
+  @doc """
+  Deliver insufficient tokens notification email.
+  """
+  def deliver_insufficient_tokens_notification(user, token_data) do
+    # Get the insufficient_tokens_for_scheduled_report template from database or use default file template
+    template_id = EmailTemplate.template_id(:insufficient_tokens_for_scheduled_report)
+    template = Repo.get_by(EmailTemplate, template_id: template_id)
+
+    {title, html_content} =
+      case template do
+        nil ->
+          # No template in database, use the default file template
+          template_path = Application.app_dir(:levanngoc, "priv/template/insufficient_tokens_for_scheduled_report_email.html")
+
+          {:ok, content} = File.read(template_path)
+          {"[levanngoc.com] Không đủ token để gửi báo cáo tự động", content}
+
+        %EmailTemplate{} = tmpl ->
+          # Use template from database
+          {tmpl.title, tmpl.content}
+      end
+
+    # Replace placeholders with actual values
+    html_body =
+      html_content
+      |> String.replace("<<[email]>>", user.email)
+      |> String.replace("<<[required_tokens]>>", to_string(token_data.required_tokens))
+      |> String.replace("<<[current_tokens]>>", to_string(token_data.current_tokens))
+      |> String.replace("<<[missing_tokens]>>", to_string(token_data.missing_tokens))
+      |> String.replace("<<[billing_url]>>", token_data.billing_url)
+
+    # Replace placeholders in title as well
+    subject =
+      title
+      |> String.replace("<<[email]>>", user.email)
+      |> String.replace("<<[required_tokens]>>", to_string(token_data.required_tokens))
+      |> String.replace("<<[current_tokens]>>", to_string(token_data.current_tokens))
+      |> String.replace("<<[missing_tokens]>>", to_string(token_data.missing_tokens))
+      |> String.replace("<<[billing_url]>>", token_data.billing_url)
+
+    deliver_html(user.email, subject, html_body)
+  end
 end

@@ -238,7 +238,7 @@ defmodule LevanngocWeb.UserAuth do
     else
       socket =
         socket
-        |> Phoenix.LiveView.put_flash(:error, "You must re-authenticate to access this page.")
+        |> Phoenix.LiveView.put_flash(:error, "Bạn cần xác thực lại để truy cập trang này.")
         |> Phoenix.LiveView.redirect(to: ~p"/users/log-in")
 
       {:halt, socket}

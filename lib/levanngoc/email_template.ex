@@ -15,20 +15,41 @@ defmodule Levanngoc.EmailTemplate do
   @template_types %{
     0 => :registration,
     1 => :forgot_password,
-    2 => :activation
+    2 => :activation,
+    3 => :keyword_ranking_report,
+    4 => :insufficient_tokens_for_scheduled_report
   }
 
   @template_fields %{
     registration: [:email, :password],
     forgot_password: [:reset_url],
-    activation: [:otp]
+    activation: [:otp],
+    keyword_ranking_report: [:email, :total_keywords, :ranked_count, :not_ranked_count, :processing_time, :timestamp],
+    insufficient_tokens_for_scheduled_report: [:email, :required_tokens, :current_tokens, :missing_tokens, :billing_url]
   }
 
   @required_template_fields %{
     registration: [:password],
     forgot_password: [:reset_url],
-    activation: [:otp]
+    activation: [:otp],
+    keyword_ranking_report: [],
+    insufficient_tokens_for_scheduled_report: []
   }
+
+  @default_titles %{
+    registration: "[levanngoc.com] Thông tin đăng nhập tài khoản",
+    forgot_password: "[levanngoc.com] Đặt lại mật khẩu",
+    activation: "[levanngoc.com] Kích hoạt tài khoản",
+    keyword_ranking_report: "[levanngoc.com] Báo cáo kiểm tra thứ hạng từ khóa",
+    insufficient_tokens_for_scheduled_report: "[levanngoc.com] Không đủ token để gửi báo cáo tự động"
+  }
+
+  @doc """
+  Returns the default title for a given template type.
+  """
+  def default_title(template_type) when is_atom(template_type) do
+    Map.get(@default_titles, template_type, "")
+  end
 
   @doc """
   Returns the template type atom for a given template_id integer.

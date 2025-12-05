@@ -470,8 +470,11 @@ defmodule Levanngoc.Accounts do
   Deducts tokens from a user.
   """
   def deduct_user_tokens(%User{} = user, amount) when is_integer(amount) and amount >= 0 do
+    current_amount = user.token_amount || 0
+    new_amount = current_amount - amount
+
     user
-    |> Ecto.Changeset.change(token_amount: user.token_amount - amount)
+    |> Ecto.Changeset.change(token_amount: new_amount)
     |> Repo.update()
   end
 

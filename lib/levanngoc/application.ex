@@ -48,6 +48,8 @@ defmodule Levanngoc.Application do
       {Cachex, [:cache]},
       # Start Mailgun settings cache
       Levanngoc.Settings.MailgunCache,
+      # Start Oban
+      {Oban, Application.fetch_env!(:levanngoc, Oban)},
       # Start a worker by calling: Levanngoc.Worker.start_link(arg)
       # {Levanngoc.Worker, arg},
       # Start to serve requests, typically the last entry

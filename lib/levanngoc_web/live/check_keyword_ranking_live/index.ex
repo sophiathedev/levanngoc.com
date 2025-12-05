@@ -22,7 +22,8 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
     page = 1
     per_page = 10
 
-    {pagination, token_usage_per_check, total_token_usage} =
+    {pagination, token_usage_per_check, total_token_usage, email_hour, email_minute,
+     has_scheduled_job} =
       if is_logged_in do
         pagination =
           KeywordCheckings.list_keyword_checkings_paginated(user.id,
@@ -40,7 +41,12 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
           end
 
         total_token_usage = pagination.total_entries * token_usage_per_check
-        {pagination, token_usage_per_check, total_token_usage}
+
+        # Check if user has scheduled email job
+        {email_hour, email_minute, has_scheduled_job} = get_scheduled_job_time(user.id)
+
+        {pagination, token_usage_per_check, total_token_usage, email_hour, email_minute,
+         has_scheduled_job}
       else
         # Default values for non-logged-in users
         default_pagination = %{
@@ -51,7 +57,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
           total_pages: 0
         }
 
-        {default_pagination, 0, 0}
+        {default_pagination, 0, 0, "08", "00", false}
       end
 
     {:ok,
@@ -70,16 +76,20 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
      |> assign(:form, nil)
      |> assign(:show_create_modal, false)
      |> assign(:show_confirm_modal, false)
+     |> assign(:show_email_confirm_modal, false)
+     |> assign(:show_cancel_confirm_modal, false)
      |> assign(:cost_details, nil)
      |> assign(:is_processing, false)
      |> assign(:timer_text, "00:00:00.0")
      |> assign(:start_time, nil)
      |> assign(:editing_time, false)
-     |> assign(:email_hour, "08")
-     |> assign(:email_minute, "00")
+     |> assign(:email_hour, email_hour)
+     |> assign(:email_minute, email_minute)
      |> assign(:show_result_modal, false)
      |> assign(:result_stats, nil)
-     |> assign(:check_results, [])}
+     |> assign(:check_results, [])
+     |> assign(:is_email_mode, false)
+     |> assign(:has_scheduled_job, has_scheduled_job)}
   end
 
   @impl true
@@ -245,6 +255,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
   def handle_event("confirm_check", _params, socket) do
     total_cost = socket.assigns.cost_details.total_cost
     current_user = socket.assigns.current_scope.user
+    is_email_mode = socket.assigns.is_email_mode
 
     # Get admin settings for ScrapingDog API key
     admin_setting = Repo.all(AdminSetting) |> List.first()
@@ -300,7 +311,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
                 )
                 |> Enum.map(fn {:ok, result} -> result end)
 
-              send(pid, {:processing_complete, results})
+              send(pid, {:processing_complete, results, is_email_mode})
             end)
 
             {:noreply, socket}
@@ -309,6 +320,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
             {:noreply,
              socket
              |> assign(:show_confirm_modal, false)
+             |> assign(:is_email_mode, false)
              |> put_flash(:error, "Có lỗi xảy ra khi trừ token. Vui lòng thử lại.")}
         end
 
@@ -316,6 +328,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
         {:noreply,
          socket
          |> assign(:show_confirm_modal, false)
+         |> assign(:is_email_mode, false)
          |> put_flash(:error, "Cấu hình hệ thống lỗi, vui lòng thử lại sau.")}
     end
   end
@@ -324,7 +337,8 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
     {:noreply,
      socket
      |> assign(:show_confirm_modal, false)
-     |> assign(:cost_details, nil)}
+     |> assign(:cost_details, nil)
+     |> assign(:is_email_mode, false)}
   end
 
   def handle_event("close_result_modal", _params, socket) do
@@ -333,6 +347,131 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
 
   def handle_event("close_login_modal", _params, socket) do
     {:noreply, assign(socket, :show_login_required_modal, false)}
+  end
+
+  def handle_event("show_email_confirm", _params, socket) do
+    current_user = socket.assigns.current_scope.user
+    total_keywords = socket.assigns.total_entries
+    token_usage_per_check = socket.assigns.token_usage_per_check
+    total_cost = socket.assigns.total_token_usage
+    current_token_amount = current_user.token_amount || 0
+    remaining_tokens = current_token_amount - total_cost
+
+    cost_details = %{
+      total_keywords: total_keywords,
+      token_usage_per_check: token_usage_per_check,
+      total_cost: total_cost,
+      current_token_amount: current_token_amount,
+      remaining_tokens: remaining_tokens
+    }
+
+    {:noreply,
+     socket
+     |> assign(:cost_details, cost_details)
+     |> assign(:show_email_confirm_modal, true)}
+  end
+
+  def handle_event("send_email", _params, socket) do
+    current_user = socket.assigns.current_scope.user
+    total_keywords = socket.assigns.total_entries
+
+    # Check if there are keywords to process
+    if total_keywords == 0 do
+      {:noreply, put_flash(socket, :error, "Không có từ khóa nào để kiểm tra")}
+    else
+      # Calculate scheduled time based on email_hour and email_minute
+      email_hour = String.to_integer(socket.assigns.email_hour)
+      email_minute = String.to_integer(socket.assigns.email_minute)
+
+      now = DateTime.utc_now()
+      hcm_now = to_ho_chi_minh_time(now)
+
+      # Create scheduled datetime for today
+      scheduled_date = DateTime.to_date(hcm_now)
+
+      {:ok, scheduled_naive} =
+        NaiveDateTime.new(scheduled_date, Time.new!(email_hour, email_minute, 0))
+
+      {:ok, scheduled_hcm} = DateTime.from_naive(scheduled_naive, "Asia/Ho_Chi_Minh")
+
+      # If scheduled time is in the past, schedule for tomorrow
+      scheduled_time =
+        if DateTime.compare(scheduled_hcm, hcm_now) == :lt do
+          DateTime.add(scheduled_hcm, 1, :day)
+        else
+          scheduled_hcm
+        end
+
+      # Schedule Oban job
+      %{user_id: current_user.id, hour: email_hour, minute: email_minute}
+      |> Levanngoc.Jobs.KeywordRankingEmail.new(scheduled_at: scheduled_time)
+      |> Oban.insert()
+      |> case do
+        {:ok, _job} ->
+          time_display = Calendar.strftime(to_ho_chi_minh_time(scheduled_time), "%H:%M")
+
+          {:noreply,
+           socket
+           |> assign(:has_scheduled_job, true)
+           |> assign(:show_email_confirm_modal, false)
+           |> assign(:cost_details, nil)
+           |> put_flash(:info, "Báo cáo sẽ được gửi hàng ngày vào lúc #{time_display}")}
+
+        {:error, _changeset} ->
+          {:noreply,
+           socket
+           |> assign(:show_email_confirm_modal, false)
+           |> assign(:cost_details, nil)
+           |> put_flash(:error, "Không thể lên lịch gửi email. Vui lòng thử lại.")}
+      end
+    end
+  end
+
+  def handle_event("cancel_email_confirm", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_email_confirm_modal, false)
+     |> assign(:cost_details, nil)}
+  end
+
+  def handle_event("cancel_email_schedule", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_cancel_confirm_modal, true)}
+  end
+
+  def handle_event("confirm_cancel_email", _params, socket) do
+    current_user = socket.assigns.current_scope.user
+
+    # Cancel all scheduled jobs for this user
+    import Ecto.Query
+
+    {deleted_count, _} =
+      Oban.Job
+      |> where([j], j.worker == "Levanngoc.Jobs.KeywordRankingEmail")
+      |> where([j], j.state in ["scheduled", "available"])
+      |> where([j], fragment("?->>'user_id' = ?", j.args, ^current_user.id))
+      |> Repo.delete_all()
+
+    if deleted_count > 0 do
+      {:noreply,
+       socket
+       |> assign(:has_scheduled_job, false)
+       |> assign(:show_cancel_confirm_modal, false)
+       |> put_flash(:info, "Đã hủy lịch gửi email tự động")}
+    else
+      {:noreply,
+       socket
+       |> assign(:has_scheduled_job, false)
+       |> assign(:show_cancel_confirm_modal, false)
+       |> put_flash(:info, "Không tìm thấy lịch gửi email nào")}
+    end
+  end
+
+  def handle_event("cancel_cancel_confirm", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_cancel_confirm_modal, false)}
   end
 
   def handle_event("download", %{"type" => type, "format" => format}, socket) do
@@ -392,7 +531,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
     end
   end
 
-  def handle_info({:processing_complete, results}, socket) do
+  def handle_info({:processing_complete, results, is_email_mode}, socket) do
     total_keywords = length(results)
     ranked_count = Enum.count(results, fn r -> r.rank != nil and r.rank != "Not found" end)
     not_ranked_count = total_keywords - ranked_count
@@ -406,12 +545,86 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
       processing_time: processing_time
     }
 
-    {:noreply,
-     socket
-     |> assign(:is_processing, false)
-     |> assign(:result_stats, result_stats)
-     |> assign(:check_results, results)
-     |> assign(:show_result_modal, true)}
+    socket =
+      socket
+      |> assign(:is_processing, false)
+      |> assign(:result_stats, result_stats)
+      |> assign(:check_results, results)
+      |> assign(:is_email_mode, false)
+
+    # If email mode, send email with results
+    socket =
+      if is_email_mode do
+        current_user = socket.assigns.current_scope.user
+
+        # Generate XLSX file
+        hcm_time = to_ho_chi_minh_time(DateTime.utc_now())
+        timestamp_file = format_timestamp(hcm_time)
+        timestamp_display = format_timestamp_display(hcm_time)
+
+        {xlsx_content, _filename, _content_type} = generate_xlsx(results, "all")
+
+        # Prepare report data
+        report_data = %{
+          total_keywords: total_keywords,
+          ranked_count: ranked_count,
+          not_ranked_count: not_ranked_count,
+          processing_time: processing_time,
+          timestamp: timestamp_file,
+          timestamp_display: timestamp_display
+        }
+
+        # Send email
+        case Levanngoc.Accounts.UserNotifier.deliver_keyword_ranking_report(
+               current_user,
+               report_data,
+               xlsx_content
+             ) do
+          {:ok, _email} ->
+            socket
+            |> put_flash(:info, "Báo cáo đã được gửi đến email #{current_user.email}")
+
+          {:error, _reason} ->
+            socket
+            |> put_flash(:error, "Không thể gửi email. Vui lòng thử lại sau.")
+        end
+      else
+        socket
+        |> assign(:show_result_modal, true)
+      end
+
+    {:noreply, socket}
+  end
+
+  # Handle old messages without is_email_mode flag for backward compatibility
+  def handle_info({:processing_complete, results}, socket) do
+    handle_info({:processing_complete, results, false}, socket)
+  end
+
+  defp get_scheduled_job_time(user_id) do
+    import Ecto.Query
+
+    job =
+      Oban.Job
+      |> where([j], j.worker == "Levanngoc.Jobs.KeywordRankingEmail")
+      |> where([j], j.state in ["scheduled", "available"])
+      |> where([j], fragment("?->>'user_id' = ?", j.args, ^user_id))
+      |> order_by([j], asc: j.scheduled_at)
+      |> limit(1)
+      |> Repo.one()
+
+    case job do
+      nil ->
+        {"08", "00", false}
+
+      %Oban.Job{args: %{"hour" => hour, "minute" => minute}} ->
+        hour_str = hour |> to_string() |> String.pad_leading(2, "0")
+        minute_str = minute |> to_string() |> String.pad_leading(2, "0")
+        {hour_str, minute_str, true}
+
+      _ ->
+        {"08", "00", false}
+    end
   end
 
   defp pad(num) do
@@ -482,6 +695,10 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
 
   defp format_timestamp(datetime) do
     "#{datetime.year}#{pad_zero(datetime.month)}#{pad_zero(datetime.day)}#{pad_zero(datetime.hour)}#{pad_zero(datetime.minute)}#{pad_zero(datetime.second)}"
+  end
+
+  defp format_timestamp_display(datetime) do
+    Calendar.strftime(datetime, "%d/%m/%Y %H:%M")
   end
 
   defp generate_csv(results, type) do
@@ -796,7 +1013,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
                     class="btn btn-ghost btn-xs btn-square"
                     phx-click="toggle_edit_time"
                     title="Sửa thời gian"
-                    disabled={!@is_logged_in}
+                    disabled={!@is_logged_in or @has_scheduled_job}
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -811,18 +1028,44 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
               </div>
             </div>
             <div class="flex justify-end gap-2 mt-4">
-              <button class="btn btn-secondary btn-md" disabled={!@is_logged_in or @is_processing}>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="h-5 w-5 mr-1"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
+              <%= if @has_scheduled_job do %>
+                <button
+                  class="btn btn-error btn-md"
+                  phx-click="cancel_email_schedule"
+                  disabled={!@is_logged_in or @is_processing}
                 >
-                  <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-                  <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
-                </svg>
-                Gửi qua Email
-              </button>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5 mr-1"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fill-rule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clip-rule="evenodd"
+                    />
+                  </svg>
+                  Hủy gửi email tự động
+                </button>
+              <% else %>
+                <button
+                  class="btn btn-secondary btn-md"
+                  phx-click="show_email_confirm"
+                  disabled={!@is_logged_in or @total_entries == 0 or @is_processing}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5 mr-1"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                    <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                  </svg>
+                  Gửi tự động qua email
+                </button>
+              <% end %>
 
               <button
                 class="btn btn-primary btn-md"
@@ -991,6 +1234,137 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
                   Xác nhận & Tiếp tục
                 </button>
               <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <%= if @show_email_confirm_modal and @cost_details do %>
+        <div class="modal modal-open">
+          <div class="modal-box">
+            <h3 class="font-bold text-lg mb-4">Xác nhận lịch gửi Email hàng ngày</h3>
+
+            <div class="py-4 space-y-4">
+              <p>
+                Email sẽ được gửi <strong>hàng ngày</strong>
+                vào lúc <strong><%= @email_hour %>:<%= @email_minute %></strong>. Mỗi lần gửi sẽ tiêu tốn token của bạn.
+              </p>
+
+              <div class="bg-base-200 p-4 rounded-lg space-y-2">
+                <div class="flex justify-between">
+                  <span>Số lượng từ khóa:</span>
+                  <span class="font-bold">
+                    {number_to_delimited(@cost_details.total_keywords, precision: 0)}
+                  </span>
+                </div>
+                <div class="flex justify-between">
+                  <span>Chi phí mỗi từ khóa:</span>
+                  <span class="font-bold">
+                    {number_to_delimited(@cost_details.token_usage_per_check, precision: 0)} token<%= if @cost_details.token_usage_per_check > 1 do %>
+                      s
+                    <% end %>
+                  </span>
+                </div>
+                <div class="divider my-1"></div>
+                <div class="flex justify-between text-lg">
+                  <span>Chi phí mỗi ngày:</span>
+                  <span class="font-bold text-error">
+                    -{number_to_delimited(@cost_details.total_cost, precision: 0)} token
+                  </span>
+                </div>
+              </div>
+
+              <%= if @cost_details.remaining_tokens < 0 do %>
+                <div class="alert alert-error">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="stroke-current shrink-0 h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <span>Bạn không đủ token để thực hiện hành động này.</span>
+                </div>
+              <% else %>
+                <div class="alert alert-info">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    class="stroke-current shrink-0 w-6 h-6"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    >
+                    </path>
+                  </svg>
+                  <span>
+                    Báo cáo sẽ tự động gửi hàng ngày vào thời gian đã chọn. Hãy đảm bảo bạn có đủ token.
+                  </span>
+                </div>
+              <% end %>
+            </div>
+
+            <div class="modal-action">
+              <%= if @cost_details.remaining_tokens < 0 do %>
+                <.link href={~p"/users/billing"} class="btn btn-success">
+                  Tôi muốn nâng cấp gói
+                </.link>
+                <button class="btn btn-primary" phx-click="cancel_email_confirm">Đã hiểu!</button>
+              <% else %>
+                <button class="btn" phx-click="cancel_email_confirm">Hủy bỏ</button>
+                <button class="btn btn-primary" phx-click="send_email">
+                  Xác nhận & Lên lịch
+                </button>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <%= if @show_cancel_confirm_modal do %>
+        <div class="modal modal-open">
+          <div class="modal-box">
+            <h3 class="font-bold text-lg mb-4">Xác nhận hủy lịch gửi Email</h3>
+
+            <div class="py-4">
+              <div class="alert alert-warning">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="stroke-current shrink-0 h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+                <div>
+                  <p class="font-semibold">
+                    Báo cáo sẽ không còn được gửi tự động đến email của bạn.
+                  </p>
+                  <p class="text-sm mt-1">Bạn có chắc chắn muốn hủy lịch gửi email hàng ngày?</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-action">
+              <button class="btn" phx-click="cancel_cancel_confirm">Không, giữ lại</button>
+              <button class="btn btn-error" phx-click="confirm_cancel_email">
+                Có, hủy lịch gửi
+              </button>
             </div>
           </div>
         </div>

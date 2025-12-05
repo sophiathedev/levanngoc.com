@@ -122,8 +122,6 @@ defmodule Levanngoc.External.ScrapingDog do
                 String.contains?(result["link"], url)
               end)
 
-            dbg(organic_results)
-
             case result do
               nil ->
                 check_keyword_ranking_with_pagination(state, keyword, url, page + 1)

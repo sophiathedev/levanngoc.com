@@ -50,13 +50,14 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
       else
         # Load default from file if available
         default_content = load_default_template(template_type)
+        default_title = EmailTemplate.default_title(template_type)
 
         %{
           id: nil,
           template_id: template_id,
           type: template_type,
           type_label: format_type_label(template_type),
-          title: "",
+          title: default_title,
           content: default_content,
           exists: false
         }
@@ -86,16 +87,20 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
     template_id = String.to_integer(template_id_str)
     template = Repo.get_by(EmailTemplate, template_id: template_id)
 
-    case template do
+    content = case template do
       nil ->
-        {:noreply, put_flash(socket, :error, "Template chưa được cấu hình")}
+        # Load default template from file
+        template_type = EmailTemplate.template_type(template_id)
+        load_default_template(template_type)
 
       %EmailTemplate{} = tmpl ->
-        {:noreply,
-         socket
-         |> assign(:preview_modal_open, true)
-         |> assign(:preview_content, tmpl.content)}
+        tmpl.content
     end
+
+    {:noreply,
+     socket
+     |> assign(:preview_modal_open, true)
+     |> assign(:preview_content, content)}
   end
 
   def handle_event("close_preview", _params, socket) do
@@ -280,10 +285,9 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
                   <td class="text-right">
                     <div class="flex gap-2 justify-end">
                       <button
-                        class="btn btn-sm btn-ghost"
+                        class="btn btn-sm btn-ghost btn-square"
                         phx-click="open_preview"
                         phx-value-template_id={template.template_id}
-                        disabled={!template.exists}
                         title="Xem trước"
                       >
                         <svg
@@ -389,7 +393,7 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
                 <%= if @template_data.exists do %>
                   <span class="text-success ml-2">✓ Đã cấu hình</span>
                 <% else %>
-                  <span class="text-warning ml-2">⚠ Chưa cấu hình</span>
+                  <span class="text-warning ml-2">⚠ Chưa cấu hình (dùng template mặc định)</span>
                 <% end %>
               </p>
             </div>
@@ -783,13 +787,15 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
       :registration -> "đăng ký"
       :forgot_password -> "quên mật khẩu"
       :activation -> "kích hoạt tài khoản"
+      :keyword_ranking_report -> "báo cáo thứ hạng từ khóa"
+      :insufficient_tokens_for_scheduled_report -> "không đủ token cho báo cáo tự động"
       _ -> type |> to_string() |> String.capitalize()
     end
   end
 
   defp load_default_template(type) when is_atom(type) or is_binary(type) do
     filename = "#{type}_email.html"
-    template_path = Path.join(:code.priv_dir(:levanngoc), "../template/#{filename}")
+    template_path = Path.join(:code.priv_dir(:levanngoc), "template/#{filename}")
 
     case File.read(template_path) do
       {:ok, content} -> content
@@ -803,6 +809,15 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
       :password -> "Mật khẩu"
       :reset_url -> "Liên kết đặt lại mật khẩu"
       :otp -> "Mã OTP"
+      :total_keywords -> "Tổng số từ khóa"
+      :ranked_count -> "Số từ khóa có thứ hạng"
+      :not_ranked_count -> "Số từ khóa không có thứ hạng"
+      :processing_time -> "Thời gian xử lý"
+      :timestamp -> "Thời gian kiểm tra"
+      :required_tokens -> "Số token cần thiết"
+      :current_tokens -> "Số token hiện tại"
+      :missing_tokens -> "Số token thiếu"
+      :billing_url -> "Liên kết nâng cấp gói"
       _ -> field |> to_string() |> String.capitalize()
     end
   end
@@ -813,6 +828,15 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
       :password -> "Mật khẩu của người dùng (chỉ hiển thị khi đăng ký)"
       :reset_url -> "URL để người dùng đặt lại mật khẩu"
       :otp -> "Mã OTP 8 chữ số để kích hoạt tài khoản"
+      :total_keywords -> "Tổng số từ khóa được kiểm tra"
+      :ranked_count -> "Số lượng từ khóa có thứ hạng trong top 100"
+      :not_ranked_count -> "Số lượng từ khóa không có thứ hạng"
+      :processing_time -> "Thời gian xử lý việc kiểm tra thứ hạng"
+      :timestamp -> "Thời gian bắt đầu kiểm tra thứ hạng (định dạng: DD/MM/YYYY HH:MM)"
+      :required_tokens -> "Số lượng token cần thiết để gửi báo cáo"
+      :current_tokens -> "Số lượng token hiện tại trong tài khoản người dùng"
+      :missing_tokens -> "Số lượng token còn thiếu (số âm)"
+      :billing_url -> "URL để người dùng nâng cấp gói dịch vụ"
       _ -> "Mô tả chưa có sẵn"
     end
   end

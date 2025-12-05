@@ -84,7 +84,7 @@ config :phoenix_live_view,
   # Enable helpful, but potentially expensive runtime checks
   enable_expensive_runtime_checks: true
 
-config :levanngoc, Levanngoc.Mailer, adapter: Swoosh.Adapters.Mailgun
+# config :levanngoc, Levanngoc.Mailer, adapter: Swoosh.Adapters.Mailgun
 
 config :logger,
   level: :debug
