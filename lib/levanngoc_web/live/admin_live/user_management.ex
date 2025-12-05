@@ -125,14 +125,15 @@ defmodule LevanngocWeb.AdminLive.UserManagement do
 
     case Accounts.register_user(user_params) do
       {:ok, user} ->
-        # If role is set to superuser or specific value, update it after creation
-        case Map.get(user_params, "role") do
-          role when role in ["999999", 999_999] ->
-            Accounts.update_user_admin(user, %{role: 999_999})
+        # Update user with role and set is_active to true
+        role_value =
+          case Map.get(user_params, "role") do
+            "999999" -> 999_999
+            999_999 -> 999_999
+            _ -> 0
+          end
 
-          _ ->
-            :ok
-        end
+        Accounts.update_user_admin(user, %{role: role_value, is_active: true})
 
         {:noreply,
          socket
@@ -502,8 +503,8 @@ defmodule LevanngocWeb.AdminLive.UserManagement do
         </div>
       </div>
 
-      <div class="flex justify-between items-center">
-        <div class="form-control w-full max-w-xs">
+      <div class="flex gap-4 items-center">
+        <div class="form-control flex-1">
           <form phx-change="search">
             <input
               name="search[query]"
@@ -515,7 +516,7 @@ defmodule LevanngocWeb.AdminLive.UserManagement do
             />
           </form>
         </div>
-        <button class="btn btn-primary" phx-click="open_create_modal">
+        <button class="btn btn-primary whitespace-nowrap" phx-click="open_create_modal">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             class="h-5 w-5"
