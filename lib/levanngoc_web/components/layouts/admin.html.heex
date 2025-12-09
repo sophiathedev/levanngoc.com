@@ -46,7 +46,9 @@
                   <span class="text-xs text-base-content/60">Gói hiện tại</span>
                   <span class="text-sm font-semibold text-primary">
                     {current_plan.name} ({Number.Delimit.number_to_delimited(
-                      @current_scope.user.token_amount, precision: 0)} tokens)
+                      @current_scope.user.token_amount,
+                      precision: 0
+                    )} tokens)
                   </span>
                 </div>
               </li>

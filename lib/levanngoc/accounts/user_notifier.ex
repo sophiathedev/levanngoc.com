@@ -187,7 +187,8 @@ defmodule Levanngoc.Accounts.UserNotifier do
       case template do
         nil ->
           # No template in database, use the default file template
-          template_path = Application.app_dir(:levanngoc, "priv/template/forgot_password_email.html")
+          template_path =
+            Application.app_dir(:levanngoc, "priv/template/forgot_password_email.html")
 
           {:ok, content} = File.read(template_path)
           {"[levanngoc.com] Đặt lại mật khẩu", content}
@@ -242,7 +243,9 @@ defmodule Levanngoc.Accounts.UserNotifier do
   """
   def deliver_keyword_ranking_report(user, report_data, xlsx_content) do
     # Get template from file
-    template_path = Application.app_dir(:levanngoc, "priv/template/keyword_ranking_report_email.html")
+    template_path =
+      Application.app_dir(:levanngoc, "priv/template/keyword_ranking_report_email.html")
+
     {:ok, html_content} = File.read(template_path)
 
     # Replace placeholders with actual values
@@ -289,7 +292,11 @@ defmodule Levanngoc.Accounts.UserNotifier do
       case template do
         nil ->
           # No template in database, use the default file template
-          template_path = Application.app_dir(:levanngoc, "priv/template/insufficient_tokens_for_scheduled_report_email.html")
+          template_path =
+            Application.app_dir(
+              :levanngoc,
+              "priv/template/insufficient_tokens_for_scheduled_report_email.html"
+            )
 
           {:ok, content} = File.read(template_path)
           {"[levanngoc.com] Không đủ token để gửi báo cáo tự động", content}

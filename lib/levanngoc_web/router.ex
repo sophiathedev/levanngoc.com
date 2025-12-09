@@ -22,7 +22,10 @@ defmodule LevanngocWeb.Router do
 
     live_session :app,
       layout: {LevanngocWeb.Layouts, :app},
-      on_mount: [{LevanngocWeb.UserAuth, :mount_current_scope}, {LevanngocWeb.PopupHook, :default}] do
+      on_mount: [
+        {LevanngocWeb.UserAuth, :mount_current_scope},
+        {LevanngocWeb.PopupHook, :default}
+      ] do
       live "/", HomeLive.Index, :index
       live "/check_url_index", CheckUrlIndexLive.Index, :index
       live "/check_all_in_title", CheckAllInTitleLive.Index, :index
@@ -123,8 +126,6 @@ defmodule LevanngocWeb.Router do
       on_mount: [{LevanngocWeb.UserAuth, :mount_current_scope}] do
       live "/users/activation", UserLive.Activation, :new
     end
-
-
 
     post "/users/log-in", UserSessionController, :create
     delete "/users/log-out", UserSessionController, :delete

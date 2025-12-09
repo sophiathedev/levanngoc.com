@@ -24,8 +24,21 @@ defmodule Levanngoc.EmailTemplate do
     registration: [:email, :password],
     forgot_password: [:reset_url],
     activation: [:otp],
-    keyword_ranking_report: [:email, :total_keywords, :ranked_count, :not_ranked_count, :processing_time, :timestamp],
-    insufficient_tokens_for_scheduled_report: [:email, :required_tokens, :current_tokens, :missing_tokens, :billing_url]
+    keyword_ranking_report: [
+      :email,
+      :total_keywords,
+      :ranked_count,
+      :not_ranked_count,
+      :processing_time,
+      :timestamp
+    ],
+    insufficient_tokens_for_scheduled_report: [
+      :email,
+      :required_tokens,
+      :current_tokens,
+      :missing_tokens,
+      :billing_url
+    ]
   }
 
   @required_template_fields %{
@@ -41,7 +54,8 @@ defmodule Levanngoc.EmailTemplate do
     forgot_password: "[levanngoc.com] Đặt lại mật khẩu",
     activation: "[levanngoc.com] Kích hoạt tài khoản",
     keyword_ranking_report: "[levanngoc.com] Báo cáo kiểm tra thứ hạng từ khóa",
-    insufficient_tokens_for_scheduled_report: "[levanngoc.com] Không đủ token để gửi báo cáo tự động"
+    insufficient_tokens_for_scheduled_report:
+      "[levanngoc.com] Không đủ token để gửi báo cáo tự động"
   }
 
   @doc """

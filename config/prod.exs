@@ -22,8 +22,7 @@ config :logger,
   backends: []
 
 # Disable default console logger in production to avoid I/O errors
-config :logger, :default_handler,
-  level: :info
+config :logger, :default_handler, level: :info
 
 config :logger, :file_log,
   path: "production.log",

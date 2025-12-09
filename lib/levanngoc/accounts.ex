@@ -439,7 +439,7 @@ defmodule Levanngoc.Accounts do
       |> limit(^per_page)
       |> offset(^offset)
       |> Repo.all()
-      |> Repo.preload([current_billing: :billing_price])
+      |> Repo.preload(current_billing: :billing_price)
 
     %{
       users: users,

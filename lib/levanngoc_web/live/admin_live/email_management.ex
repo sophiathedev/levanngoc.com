@@ -87,15 +87,16 @@ defmodule LevanngocWeb.AdminLive.EmailManagement do
     template_id = String.to_integer(template_id_str)
     template = Repo.get_by(EmailTemplate, template_id: template_id)
 
-    content = case template do
-      nil ->
-        # Load default template from file
-        template_type = EmailTemplate.template_type(template_id)
-        load_default_template(template_type)
+    content =
+      case template do
+        nil ->
+          # Load default template from file
+          template_type = EmailTemplate.template_type(template_id)
+          load_default_template(template_type)
 
-      %EmailTemplate{} = tmpl ->
-        tmpl.content
-    end
+        %EmailTemplate{} = tmpl ->
+          tmpl.content
+      end
 
     {:noreply,
      socket

@@ -10,7 +10,7 @@ defmodule LevanngocWeb.PopupHook do
 
   import Ecto.Query, warn: false
 
-  def on_mount(:default, params, session, socket) do
+  def on_mount(:default, _params, _session, socket) do
     current_user =
       case socket.assigns[:current_scope] do
         %{user: user} when not is_nil(user) -> user

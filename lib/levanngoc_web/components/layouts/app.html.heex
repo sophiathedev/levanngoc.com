@@ -50,7 +50,9 @@
                     <span class="text-xs text-base-content/60">Gói hiện tại</span>
                     <span class="text-sm font-semibold text-primary">
                       {current_plan.name} ({Number.Delimit.number_to_delimited(
-                        @current_scope.user.token_amount, precision: 0)} tokens)
+                        @current_scope.user.token_amount,
+                        precision: 0
+                      )} tokens)
                     </span>
                   </div>
                 </li>
@@ -90,8 +92,8 @@
 
     <.flash_group flash={@flash} />
   </div>
-
-  <!-- Popup Modal -->
+  
+<!-- Popup Modal -->
   <%= if assigns[:current_popup] do %>
     <div class="fixed inset-0 z-50 overflow-y-auto">
       <!-- Backdrop with blur -->
@@ -101,8 +103,8 @@
         phx-value-popup-id={@current_popup.id}
       >
       </div>
-
-      <!-- Modal Content -->
+      
+<!-- Modal Content -->
       <div class="flex min-h-full items-center justify-center p-[7.5vh]">
         <div class="relative bg-base-100 rounded-lg shadow-xl w-[85vw] h-[85vh] flex flex-col">
           <!-- Modal Header -->
@@ -130,8 +132,8 @@
               </svg>
             </button>
           </div>
-
-          <!-- Iframe Content -->
+          
+<!-- Iframe Content -->
           <div class="flex-1 overflow-hidden border-b border-base-300 rounded-b-lg">
             <iframe
               srcdoc={wrap_popup_content(@current_popup.content)}
