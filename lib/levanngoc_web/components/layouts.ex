@@ -90,4 +90,23 @@ defmodule LevanngocWeb.Layouts do
     </div>
     """
   end
+
+  @doc """
+  Helper function to wrap popup content with HTML document structure.
+  """
+  def wrap_popup_content(content) do
+    """
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="stylesheet" href="/assets/css/app.css" />
+      </head>
+      <body class="antialiased p-4">
+        #{content}
+      </body>
+    </html>
+    """
+  end
 end

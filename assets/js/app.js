@@ -75,10 +75,40 @@ const OTPInput = {
   }
 }
 
+// Popup Tracker Hook - Manages anonymous session ID in sessionStorage
+const PopupTracker = {
+  mounted() {
+    // Get or create anonymous session ID
+    let anonymousId = sessionStorage.getItem('popup_anonymous_id')
+    if (!anonymousId) {
+      anonymousId = this.generateId()
+      sessionStorage.setItem('popup_anonymous_id', anonymousId)
+    }
+    // Store in a meta tag so the hook can read it on mount
+    const metaTag = document.createElement('meta')
+    metaTag.name = 'popup-anonymous-id'
+    metaTag.content = anonymousId
+    document.head.appendChild(metaTag)
+  },
+
+  generateId() {
+    return Array.from(crypto.getRandomValues(new Uint8Array(16)))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('')
+  }
+}
+
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
-  params: { _csrf_token: csrfToken },
-  hooks: { ...colocatedHooks, OTPInput },
+  params: (liveViewName) => {
+    // Get anonymous ID from sessionStorage
+    const anonymousId = sessionStorage.getItem('popup_anonymous_id') || ''
+    return {
+      _csrf_token: csrfToken,
+      popup_anonymous_id: anonymousId
+    }
+  },
+  hooks: { ...colocatedHooks, OTPInput, PopupTracker },
 })
 
 // Show progress bar on live navigation and form submits

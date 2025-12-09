@@ -21,7 +21,7 @@ defmodule Levanngoc.MixProject do
   def application do
     [
       mod: {Levanngoc.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      extra_applications: [:logger, :runtime_tools, :os_mon]
     ]
   end
 
@@ -41,7 +41,7 @@ defmodule Levanngoc.MixProject do
   defp deps do
     [
       {:bcrypt_elixir, "~> 3.0"},
-      {:phoenix, "~> 1.8.1"},
+      {:phoenix, "~> 1.8.2"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},
       {:postgrex, ">= 0.0.0"},

@@ -1,4 +1,7 @@
 <div class="drawer lg:drawer-open">
+  <!-- Hidden element for PopupTracker hook -->
+  <div id="popup-tracker" phx-hook="PopupTracker" style="display: none;"></div>
+
   <input id="app-drawer" type="checkbox" class="drawer-toggle" />
   <div class="drawer-content flex flex-col">
     <!-- Navbar -->
@@ -87,6 +90,62 @@
 
     <.flash_group flash={@flash} />
   </div>
+
+  <!-- Popup Modal -->
+  <%= if assigns[:current_popup] do %>
+    <div class="fixed inset-0 z-50 overflow-y-auto">
+      <!-- Backdrop with blur -->
+      <div
+        class="fixed inset-0 bg-black/50 backdrop-blur-sm"
+        phx-click="close_popup"
+        phx-value-popup-id={@current_popup.id}
+      >
+      </div>
+
+      <!-- Modal Content -->
+      <div class="flex min-h-full items-center justify-center p-[7.5vh]">
+        <div class="relative bg-base-100 rounded-lg shadow-xl w-[85vw] h-[85vh] flex flex-col">
+          <!-- Modal Header -->
+          <div class="flex justify-between items-center p-4 border-b border-base-300 flex-shrink-0">
+            <h3 class="text-lg font-bold">{@current_popup.title}</h3>
+            <button
+              type="button"
+              phx-click="close_popup"
+              phx-value-popup-id={@current_popup.id}
+              class="btn btn-sm btn-ghost btn-circle"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Iframe Content -->
+          <div class="flex-1 overflow-hidden border-b border-base-300 rounded-b-lg">
+            <iframe
+              srcdoc={wrap_popup_content(@current_popup.content)}
+              class="w-full h-full border-0"
+              sandbox="allow-same-origin allow-popups"
+              title={@current_popup.title}
+            >
+            </iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
   <div class="drawer-side">
     <label for="app-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
     <aside class="bg-base-200 min-h-full w-65">

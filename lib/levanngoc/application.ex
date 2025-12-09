@@ -2,6 +2,7 @@ defmodule Levanngoc.Application do
   # See https://hexdocs.pm/elixir/Application.html
   # for more information on OTP Applications
   @moduledoc false
+  require Cachex.Spec
 
   use Application
 
@@ -45,7 +46,12 @@ defmodule Levanngoc.Application do
       Levanngoc.Repo,
       {DNSCluster, query: Application.get_env(:levanngoc, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Levanngoc.PubSub},
-      {Cachex, [:cache]},
+      Supervisor.child_spec({Cachex, [:cache]}, id: :cachex_cache),
+      Supervisor.child_spec(
+        {Cachex,
+         [name: :popup_cache, expiration: Cachex.Spec.expiration(default: :timer.minutes(30))]},
+        id: :cachex_popup_cache
+      ),
       # Start Mailgun settings cache
       Levanngoc.Settings.MailgunCache,
       # Start Oban

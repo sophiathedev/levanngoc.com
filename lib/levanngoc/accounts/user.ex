@@ -19,6 +19,7 @@ defmodule Levanngoc.Accounts.User do
     has_many :billing_histories, Levanngoc.Billing.BillingHistory
     has_one :current_billing, Levanngoc.Billing.BillingHistory, where: [is_current: true]
     has_many :keyword_checkings, Levanngoc.KeywordChecking
+    has_many :popup_seens, Levanngoc.PopupSeen
 
     timestamps(type: :utc_datetime)
   end

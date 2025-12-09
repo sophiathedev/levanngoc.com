@@ -22,7 +22,7 @@ defmodule LevanngocWeb.Router do
 
     live_session :app,
       layout: {LevanngocWeb.Layouts, :app},
-      on_mount: [{LevanngocWeb.UserAuth, :mount_current_scope}] do
+      on_mount: [{LevanngocWeb.UserAuth, :mount_current_scope}, {LevanngocWeb.PopupHook, :default}] do
       live "/", HomeLive.Index, :index
       live "/check_url_index", CheckUrlIndexLive.Index, :index
       live "/check_all_in_title", CheckAllInTitleLive.Index, :index
@@ -92,6 +92,9 @@ defmodule LevanngocWeb.Router do
       live "/admin/pricing", AdminLive.Pricing, :index
       live "/admin/email-templates", AdminLive.EmailManagement, :index
       live "/admin/email-templates/:template_id", AdminLive.EmailManagement, :edit
+      live "/admin/popups", AdminLive.PopupManagement, :index
+      live "/admin/popups/new", AdminLive.PopupManagement, :new
+      live "/admin/popups/:id/edit", AdminLive.PopupManagement, :edit
     end
   end
 
