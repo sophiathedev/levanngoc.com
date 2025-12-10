@@ -79,9 +79,10 @@ defmodule Levanngoc.Accounts do
   @doc """
   Validates only the email for pre-registration (before OTP verification).
   Checks email format and uniqueness without requiring password.
+  Requires @gmail.com email addresses for regular user registrations.
   """
   def validate_email_for_registration(%User{} = user, attrs \\ %{}) do
-    User.email_changeset(user, attrs, validate_unique: true)
+    User.email_changeset(user, attrs, validate_unique: true, require_gmail: true)
   end
 
   @doc """

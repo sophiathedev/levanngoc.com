@@ -49,12 +49,23 @@ defmodule Levanngoc.Accounts.User do
         message: "phải có dấu @ và không có khoảng trắng"
       )
       |> validate_length(:email, max: 160)
+      |> maybe_validate_gmail_only(opts)
 
     if Keyword.get(opts, :validate_unique, true) do
       changeset
       |> unsafe_validate_unique(:email, Levanngoc.Repo)
       |> unique_constraint(:email, message: "đã được sử dụng")
       |> validate_email_changed()
+    else
+      changeset
+    end
+  end
+
+  defp maybe_validate_gmail_only(changeset, opts) do
+    if Keyword.get(opts, :require_gmail, false) do
+      validate_format(changeset, :email, ~r/@gmail\.com$/i,
+        message: "phải sử dụng địa chỉ email @gmail.com"
+      )
     else
       changeset
     end
