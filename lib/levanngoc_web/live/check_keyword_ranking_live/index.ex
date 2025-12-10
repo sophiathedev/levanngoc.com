@@ -80,7 +80,6 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
      |> assign(:show_cancel_confirm_modal, false)
      |> assign(:cost_details, nil)
      |> assign(:is_processing, false)
-     |> assign(:timer_text, "00:00:00.0")
      |> assign(:start_time, nil)
      |> assign(:editing_time, false)
      |> assign(:email_hour, email_hour)
@@ -89,7 +88,9 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
      |> assign(:result_stats, nil)
      |> assign(:check_results, [])
      |> assign(:is_email_mode, false)
-     |> assign(:has_scheduled_job, has_scheduled_job)}
+     |> assign(:has_scheduled_job, has_scheduled_job)
+     |> assign(:is_exporting_sheets, false)
+     |> assign(:exported_sheets_urls, %{})}
   end
 
   @impl true
@@ -505,6 +506,86 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
      })}
   end
 
+  def handle_event("export_google_sheets", %{"type" => type}, socket) do
+    if socket.assigns.is_exporting_sheets do
+      {:noreply, socket}
+    else
+      # Check if we already exported this type
+      cached_url = Map.get(socket.assigns.exported_sheets_urls, type)
+
+      if cached_url do
+        # Reuse existing spreadsheet
+        {:noreply, push_event(socket, "open-url", %{url: cached_url})}
+      else
+        # Filter results based on type
+        filtered_results =
+          case type do
+            "all" ->
+              socket.assigns.check_results
+
+            "ranked" ->
+              Enum.filter(socket.assigns.check_results, fn r ->
+                r.rank != nil and r.rank != "Not found" and r.rank != "Not Found"
+              end)
+
+            "not_ranked" ->
+              Enum.filter(socket.assigns.check_results, fn r ->
+                r.rank == nil or r.rank == "Not found" or r.rank == "Not Found"
+              end)
+          end
+
+        # Set exporting flag and return immediately to show loading state
+        socket = assign(socket, :is_exporting_sheets, true)
+
+        # Prepare rows for export
+        rows =
+          filtered_results
+          |> Enum.map(fn result ->
+            [result.keyword, result.website_url, result.rank]
+          end)
+          |> then(fn rows -> [["Keyword", "Website URL", "Rank"] | rows] end)
+
+        # Generate spreadsheet name
+        timestamp = format_timestamp(to_ho_chi_minh_time(DateTime.utc_now()))
+        spreadsheet_name = "keyword_ranking_#{type}_#{timestamp}"
+
+        # Export to Google Sheets in async task
+        pid = self()
+
+        Task.start(fn ->
+          result =
+            case Cachex.get(:cache, :reports_folder_id) do
+              {:ok, folder_id} when is_binary(folder_id) ->
+                conn = Levanngoc.External.GoogleDrive.get_conn()
+
+                case Levanngoc.External.GoogleDrive.export_to_spreadsheet(
+                       conn,
+                       folder_id,
+                       spreadsheet_name,
+                       rows
+                     ) do
+                  {:ok, %{spreadsheet_id: spreadsheet_id}} ->
+                    spreadsheet_url =
+                      "https://docs.google.com/spreadsheets/d/#{spreadsheet_id}/edit"
+
+                    {:ok, type, spreadsheet_url}
+
+                  {:error, reason} ->
+                    {:error, reason}
+                end
+
+              _ ->
+                {:error, :no_folder}
+            end
+
+          send(pid, {:sheets_export_complete, result})
+        end)
+
+        {:noreply, socket}
+      end
+    end
+  end
+
   @impl true
 
   def handle_info({:processing_complete, results, is_email_mode}, socket) do
@@ -538,6 +619,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
       |> assign(:result_stats, result_stats)
       |> assign(:check_results, results)
       |> assign(:is_email_mode, false)
+      |> assign(:exported_sheets_urls, %{})
 
     # If email mode, send email with results
     socket =
@@ -586,6 +668,32 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
   # Handle old messages without is_email_mode flag for backward compatibility
   def handle_info({:processing_complete, results}, socket) do
     handle_info({:processing_complete, results, false}, socket)
+  end
+
+  def handle_info({:sheets_export_complete, result}, socket) do
+    case result do
+      {:ok, type, spreadsheet_url} ->
+        # Cache the URL for this type
+        updated_urls = Map.put(socket.assigns.exported_sheets_urls, type, spreadsheet_url)
+
+        {:noreply,
+         socket
+         |> assign(:is_exporting_sheets, false)
+         |> assign(:exported_sheets_urls, updated_urls)
+         |> push_event("open-url", %{url: spreadsheet_url})}
+
+      {:error, :no_folder} ->
+        {:noreply,
+         socket
+         |> assign(:is_exporting_sheets, false)
+         |> put_flash(:error, "Không tìm thấy thư mục báo cáo. Vui lòng thử lại sau.")}
+
+      {:error, _reason} ->
+        {:noreply,
+         socket
+         |> assign(:is_exporting_sheets, false)
+         |> put_flash(:error, "Xuất Google Sheets thất bại. Vui lòng thử lại.")}
+    end
   end
 
   defp get_scheduled_job_time(user_id) do
@@ -893,7 +1001,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
             <% end %>
           </div>
         </div>
-        
+
     <!-- Second row - Two cards in separate columns -->
         <div class="card !bg-white shadow-lg border border-base-300 overflow-hidden">
           <div class="card-body p-6">
@@ -1362,7 +1470,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
 
       <%= if @show_result_modal and @result_stats do %>
         <div class="modal modal-open">
-          <div class="modal-box max-w-2xl relative z-50">
+          <div class="modal-box max-w-2xl relative z-50 overflow-visible">
             <h3 class="font-bold text-lg mb-4">Kết quả kiểm tra thứ hạng</h3>
 
             <div class="space-y-4">
@@ -1409,6 +1517,38 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
                         <li>
                           <button phx-click="download" phx-value-type="ranked" phx-value-format="csv">
                             Tải xuống (.csv)
+                          </button>
+                        </li>
+                        <div class="divider my-0"></div>
+                        <li class={@is_exporting_sheets && "disabled"}>
+                          <button
+                            phx-click="export_google_sheets"
+                            phx-value-type="ranked"
+                            disabled={@is_exporting_sheets}
+                          >
+                            <%= cond do %>
+                              <% @is_exporting_sheets -> %>
+                                <span class="loading loading-spinner loading-sm"></span>
+                                Đang xuất...
+                              <% Map.has_key?(@exported_sheets_urls, "ranked") -> %>
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke-width="1.5"
+                                  stroke="currentColor"
+                                  class="size-4"
+                                >
+                                  <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                                  />
+                                </svg>
+                                Google Sheets
+                              <% true -> %>
+                                Google Sheets
+                            <% end %>
                           </button>
                         </li>
                       </ul>
@@ -1463,6 +1603,38 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
                             Tải xuống (.csv)
                           </button>
                         </li>
+                        <div class="divider my-0"></div>
+                        <li class={@is_exporting_sheets && "disabled"}>
+                          <button
+                            phx-click="export_google_sheets"
+                            phx-value-type="not_ranked"
+                            disabled={@is_exporting_sheets}
+                          >
+                            <%= cond do %>
+                              <% @is_exporting_sheets -> %>
+                                <span class="loading loading-spinner loading-sm"></span>
+                                Đang xuất...
+                              <% Map.has_key?(@exported_sheets_urls, "not_ranked") -> %>
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke-width="1.5"
+                                  stroke="currentColor"
+                                  class="size-4"
+                                >
+                                  <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                                  />
+                                </svg>
+                                Google Sheets
+                              <% true -> %>
+                                Google Sheets
+                            <% end %>
+                          </button>
+                        </li>
                       </ul>
                     </div>
                   </div>
@@ -1502,6 +1674,38 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
                       <li>
                         <button phx-click="download" phx-value-type="all" phx-value-format="csv">
                           Tải xuống (.csv)
+                        </button>
+                      </li>
+                      <div class="divider my-0"></div>
+                      <li class={@is_exporting_sheets && "disabled"}>
+                        <button
+                          phx-click="export_google_sheets"
+                          phx-value-type="all"
+                          disabled={@is_exporting_sheets}
+                        >
+                          <%= cond do %>
+                            <% @is_exporting_sheets -> %>
+                              <span class="loading loading-spinner loading-sm"></span>
+                              Đang xuất...
+                            <% Map.has_key?(@exported_sheets_urls, "all") -> %>
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke-width="1.5"
+                                stroke="currentColor"
+                                class="size-4"
+                              >
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                                />
+                              </svg>
+                              Google Sheets
+                            <% true -> %>
+                              Google Sheets
+                          <% end %>
                         </button>
                       </li>
                     </ul>

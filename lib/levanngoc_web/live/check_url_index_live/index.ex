@@ -30,7 +30,6 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
      |> assign(:is_processing, false)
      |> assign(:is_exporting_sheets, false)
      |> assign(:exported_sheets_urls, %{})
-     |> assign(:timer_text, "00:00:00.0")
      |> assign(:start_time, nil)
      |> assign(:show_result_modal, false)
      |> assign(:show_confirm_modal, false)
@@ -153,10 +152,6 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
             )
             |> Enum.map(fn {:ok, result} -> result end)
 
-          IO.puts(
-            "All request elapsed time: #{inspect(DateTime.diff(DateTime.utc_now(), socket.assigns.start_time, :millisecond))}"
-          )
-
           # Send results as a tuple format expected by handle_info
           send(pid, {:processing_complete, [{nil, results}]})
         end)
@@ -225,9 +220,6 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
         # Reuse existing spreadsheet
         {:noreply, push_event(socket, "open-url", %{url: cached_url})}
       else
-        # Set exporting flag
-        socket = assign(socket, :is_exporting_sheets, true)
-
         # Filter results based on type
         filtered_results =
           case type do
@@ -241,60 +233,54 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
               Enum.filter(socket.assigns.check_results, fn r -> !r.indexed end)
           end
 
-        # Get cached folder ID
-        case Cachex.get(:cache, :reports_folder_id) do
-          {:ok, nil} ->
-            {:noreply,
-             socket
-             |> assign(:is_exporting_sheets, false)
-             |> put_flash(:error, "Không tìm thấy thư mục báo cáo. Vui lòng thử lại sau.")}
+        # Set exporting flag and return immediately to show loading state
+        socket = assign(socket, :is_exporting_sheets, true)
 
-          {:ok, folder_id} ->
-            # Generate spreadsheet name with timestamp
-            timestamp = format_timestamp(to_ho_chi_minh_time(DateTime.utc_now()))
-            spreadsheet_name = "check_url_index_#{timestamp}"
+        # Prepare rows data
+        rows =
+          [["URL", "Status"]] ++
+            Enum.map(filtered_results, fn result ->
+              [result.url, if(result.indexed, do: "indexed", else: "noindex")]
+            end)
 
-            # Prepare rows data
-            rows =
-              [["URL", "Status"]] ++
-                Enum.map(filtered_results, fn result ->
-                  [result.url, if(result.indexed, do: "indexed", else: "noindex")]
-                end)
+        # Generate spreadsheet name with timestamp
+        timestamp = format_timestamp(to_ho_chi_minh_time(DateTime.utc_now()))
+        spreadsheet_name = "check_url_index_#{timestamp}"
 
-            # Export to Google Sheets
-            conn = Levanngoc.External.GoogleDrive.get_conn()
+        # Export to Google Sheets in async task
+        pid = self()
 
-            case Levanngoc.External.GoogleDrive.export_to_spreadsheet(
-                   conn,
-                   folder_id,
-                   spreadsheet_name,
-                   rows
-                 ) do
-              {:ok, %{spreadsheet_id: spreadsheet_id}} ->
-                spreadsheet_url = "https://docs.google.com/spreadsheets/d/#{spreadsheet_id}"
+        Task.start(fn ->
+          result =
+            case Cachex.get(:cache, :reports_folder_id) do
+              {:ok, nil} ->
+                {:error, :no_folder}
 
-                # Cache the URL for this type
-                updated_urls = Map.put(socket.assigns.exported_sheets_urls, type, spreadsheet_url)
+              {:ok, folder_id} ->
+                conn = Levanngoc.External.GoogleDrive.get_conn()
 
-                {:noreply,
-                 socket
-                 |> assign(:is_exporting_sheets, false)
-                 |> assign(:exported_sheets_urls, updated_urls)
-                 |> push_event("open-url", %{url: spreadsheet_url})}
+                case Levanngoc.External.GoogleDrive.export_to_spreadsheet(
+                       conn,
+                       folder_id,
+                       spreadsheet_name,
+                       rows
+                     ) do
+                  {:ok, %{spreadsheet_id: spreadsheet_id}} ->
+                    spreadsheet_url = "https://docs.google.com/spreadsheets/d/#{spreadsheet_id}"
+                    {:ok, type, spreadsheet_url}
 
-              {:error, _reason} ->
-                {:noreply,
-                 socket
-                 |> assign(:is_exporting_sheets, false)
-                 |> put_flash(:error, "Có lỗi xảy ra khi xuất Google Sheets. Vui lòng thử lại.")}
+                  {:error, reason} ->
+                    {:error, reason}
+                end
+
+              {:error, reason} ->
+                {:error, reason}
             end
 
-          {:error, _reason} ->
-            {:noreply,
-             socket
-             |> assign(:is_exporting_sheets, false)
-             |> put_flash(:error, "Có lỗi xảy ra. Vui lòng thử lại.")}
-        end
+          send(pid, {:sheets_export_complete, result})
+        end)
+
+        {:noreply, socket}
       end
     end
   end
@@ -391,6 +377,32 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
      |> assign(:check_results, all_results)
      |> assign(:exported_sheets_urls, %{})
      |> assign(:show_result_modal, true)}
+  end
+
+  def handle_info({:sheets_export_complete, result}, socket) do
+    case result do
+      {:ok, type, spreadsheet_url} ->
+        # Cache the URL for this type
+        updated_urls = Map.put(socket.assigns.exported_sheets_urls, type, spreadsheet_url)
+
+        {:noreply,
+         socket
+         |> assign(:is_exporting_sheets, false)
+         |> assign(:exported_sheets_urls, updated_urls)
+         |> push_event("open-url", %{url: spreadsheet_url})}
+
+      {:error, :no_folder} ->
+        {:noreply,
+         socket
+         |> assign(:is_exporting_sheets, false)
+         |> put_flash(:error, "Không tìm thấy thư mục báo cáo. Vui lòng thử lại sau.")}
+
+      {:error, _reason} ->
+        {:noreply,
+         socket
+         |> assign(:is_exporting_sheets, false)
+         |> put_flash(:error, "Có lỗi xảy ra khi xuất Google Sheets. Vui lòng thử lại.")}
+    end
   end
 
   defp pad(num) do
@@ -731,7 +743,7 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
 
     <%= if @show_result_modal do %>
       <div class="modal modal-open">
-        <div class="modal-box relative z-50">
+        <div class="modal-box relative z-50 overflow-visible">
           <h3 class="font-bold text-lg mb-4">Kết quả kiểm tra</h3>
 
           <div class="space-y-4">

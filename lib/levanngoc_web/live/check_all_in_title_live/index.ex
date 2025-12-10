@@ -8,7 +8,7 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
   alias Levanngoc.Accounts
   import Number.Delimit
 
-  @number_of_check_all_in_title_threads 20
+  @number_of_check_all_in_title_threads 40
 
   @impl true
   def mount(_params, _session, socket) do
@@ -28,7 +28,6 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
      |> assign(:show_login_required_modal, !is_logged_in)
      |> assign(:uploaded_files, [])
      |> assign(:is_processing, false)
-     |> assign(:timer_text, "00:00:00.0")
      |> assign(:start_time, nil)
      |> assign(:show_result_modal, false)
      |> assign(:show_confirm_modal, false)
@@ -36,6 +35,8 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
      |> assign(:result_stats, nil)
      |> assign(:is_edit_mode, true)
      |> assign(:manual_keywords, "")
+     |> assign(:is_exporting_sheets, false)
+     |> assign(:exported_sheets_urls, %{})
      |> allow_upload(:file, accept: ~w(.xlsx .csv), max_entries: 1, max_file_size: 32_000_000)}
   end
 
@@ -146,6 +147,97 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
        content: Base.encode64(content),
        filename: filename
      })}
+  end
+
+  @impl true
+  def handle_event("export_google_sheets", %{"type" => type}, socket) do
+    if socket.assigns.is_exporting_sheets do
+      {:noreply, socket}
+    else
+      # Check if we already exported this type
+      cached_url = Map.get(socket.assigns.exported_sheets_urls, type)
+
+      if cached_url do
+        # Reuse existing spreadsheet
+        {:noreply, push_event(socket, "open-url", %{url: cached_url})}
+      else
+        # Filter results based on type
+        filtered_results =
+          case type do
+            "all" ->
+              socket.assigns.check_results
+
+            "indexed" ->
+              Enum.filter(socket.assigns.check_results, fn r -> r.result_count > 0 end)
+
+            "not_indexed" ->
+              Enum.filter(socket.assigns.check_results, fn r -> r.result_count == 0 end)
+          end
+
+        # Set exporting flag and return immediately to show loading state
+        socket = assign(socket, :is_exporting_sheets, true)
+
+        # Prepare rows for export
+        rows =
+          filtered_results
+          |> Enum.map(fn result ->
+            if result.traffic do
+              [result.keyword, result.traffic, result.result_count]
+            else
+              [result.keyword, result.result_count]
+            end
+          end)
+          |> then(fn rows ->
+            # Add header based on whether traffic exists
+            header =
+              if Enum.any?(filtered_results, fn r -> r.traffic end) do
+                ["Keyword", "Traffic", "Result Count"]
+              else
+                ["Keyword", "Result Count"]
+              end
+
+            [header | rows]
+          end)
+
+        # Generate spreadsheet name
+        timestamp = format_timestamp(to_ho_chi_minh_time(DateTime.utc_now()))
+        spreadsheet_name = "allintitle_check_#{type}_#{timestamp}"
+
+        # Export to Google Sheets in async task
+        pid = self()
+
+        Task.start(fn ->
+          result =
+            case Cachex.get(:cache, :reports_folder_id) do
+              {:ok, folder_id} when is_binary(folder_id) ->
+                conn = Levanngoc.External.GoogleDrive.get_conn()
+
+                case Levanngoc.External.GoogleDrive.export_to_spreadsheet(
+                       conn,
+                       folder_id,
+                       spreadsheet_name,
+                       rows
+                     ) do
+                  {:ok, %{spreadsheet_id: spreadsheet_id}} ->
+                    spreadsheet_url =
+                      "https://docs.google.com/spreadsheets/d/#{spreadsheet_id}/edit"
+
+                    {:ok, type, spreadsheet_url}
+
+                  {:error, reason} ->
+                    {:error, reason}
+                end
+
+              _ ->
+                {:error, :no_folder}
+            end
+
+          send(pid, {:sheets_export_complete, result})
+        end)
+
+        {:noreply, socket}
+      end
+    end
   end
 
   @impl true
@@ -302,7 +394,34 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
      |> assign(:uploaded_files, [])
      |> assign(:result_stats, result_stats)
      |> assign(:check_results, all_results)
+     |> assign(:exported_sheets_urls, %{})
      |> assign(:show_result_modal, true)}
+  end
+
+  def handle_info({:sheets_export_complete, result}, socket) do
+    case result do
+      {:ok, type, spreadsheet_url} ->
+        # Cache the URL for this type
+        updated_urls = Map.put(socket.assigns.exported_sheets_urls, type, spreadsheet_url)
+
+        {:noreply,
+         socket
+         |> assign(:is_exporting_sheets, false)
+         |> assign(:exported_sheets_urls, updated_urls)
+         |> push_event("open-url", %{url: spreadsheet_url})}
+
+      {:error, :no_folder} ->
+        {:noreply,
+         socket
+         |> assign(:is_exporting_sheets, false)
+         |> put_flash(:error, "Không tìm thấy thư mục báo cáo. Vui lòng thử lại sau.")}
+
+      {:error, _reason} ->
+        {:noreply,
+         socket
+         |> assign(:is_exporting_sheets, false)
+         |> put_flash(:error, "Xuất Google Sheets thất bại. Vui lòng thử lại.")}
+    end
   end
 
   defp pad(num) do
@@ -717,7 +836,7 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
 
     <%= if @show_result_modal do %>
       <div class="modal modal-open">
-        <div class="modal-box relative z-50">
+        <div class="modal-box relative z-50 overflow-visible">
           <h3 class="font-bold text-lg mb-4">Kết quả kiểm tra</h3>
 
           <div class="space-y-4">
@@ -765,6 +884,38 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
                         Tải xuống (.csv)
                       </button>
                     </li>
+                    <div class="divider my-0"></div>
+                    <li class={@is_exporting_sheets && "disabled"}>
+                      <button
+                        phx-click="export_google_sheets"
+                        phx-value-type="all"
+                        disabled={@is_exporting_sheets}
+                      >
+                        <%= cond do %>
+                          <% @is_exporting_sheets -> %>
+                            <span class="loading loading-spinner loading-sm"></span>
+                            Đang xuất...
+                          <% Map.has_key?(@exported_sheets_urls, "all") -> %>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke-width="1.5"
+                              stroke="currentColor"
+                              class="size-4"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                              />
+                            </svg>
+                            Google Sheets
+                          <% true -> %>
+                            Google Sheets
+                        <% end %>
+                      </button>
+                    </li>
                   </ul>
                 </div>
               <% end %>
@@ -805,6 +956,38 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
                     <li>
                       <button phx-click="download" phx-value-type="indexed" phx-value-format="csv">
                         Tải xuống (.csv)
+                      </button>
+                    </li>
+                    <div class="divider my-0"></div>
+                    <li class={@is_exporting_sheets && "disabled"}>
+                      <button
+                        phx-click="export_google_sheets"
+                        phx-value-type="indexed"
+                        disabled={@is_exporting_sheets}
+                      >
+                        <%= cond do %>
+                          <% @is_exporting_sheets -> %>
+                            <span class="loading loading-spinner loading-sm"></span>
+                            Đang xuất...
+                          <% Map.has_key?(@exported_sheets_urls, "indexed") -> %>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke-width="1.5"
+                              stroke="currentColor"
+                              class="size-4"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                              />
+                            </svg>
+                            Google Sheets
+                          <% true -> %>
+                            Google Sheets
+                        <% end %>
                       </button>
                     </li>
                   </ul>
@@ -851,6 +1034,38 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
                     <li>
                       <button phx-click="download" phx-value-type="not_indexed" phx-value-format="csv">
                         Tải xuống (.csv)
+                      </button>
+                    </li>
+                    <div class="divider my-0"></div>
+                    <li class={@is_exporting_sheets && "disabled"}>
+                      <button
+                        phx-click="export_google_sheets"
+                        phx-value-type="not_indexed"
+                        disabled={@is_exporting_sheets}
+                      >
+                        <%= cond do %>
+                          <% @is_exporting_sheets -> %>
+                            <span class="loading loading-spinner loading-sm"></span>
+                            Đang xuất...
+                          <% Map.has_key?(@exported_sheets_urls, "not_indexed") -> %>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke-width="1.5"
+                              stroke="currentColor"
+                              class="size-4"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                              />
+                            </svg>
+                            Google Sheets
+                          <% true -> %>
+                            Google Sheets
+                        <% end %>
                       </button>
                     </li>
                   </ul>
