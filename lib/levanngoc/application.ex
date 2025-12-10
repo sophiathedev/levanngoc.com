@@ -25,12 +25,6 @@ defmodule Levanngoc.Application do
       }
     })
 
-    # Google Authentication via service account
-    google_credentials =
-      Application.get_env(:levanngoc, :google_application_credentials)
-      |> File.read!()
-      |> Jason.decode!()
-
     google_authentication_scopes = [
       # Allow for drive
       "https://www.googleapis.com/auth/drive",
@@ -38,8 +32,18 @@ defmodule Levanngoc.Application do
       "https://www.googleapis.com/auth/spreadsheets"
     ]
 
+    google_oauth_config = Application.get_env(:levanngoc, :google_oauth)
+    google_client_id = google_oauth_config[:client_id]
+    google_client_secret = google_oauth_config[:client_secret]
+    google_refresh_token = google_oauth_config[:refresh_token]
+
     google_authentication_source =
-      {:service_account, google_credentials, [scopes: google_authentication_scopes]}
+      {:refresh_token,
+       %{
+         "client_id" => google_client_id,
+         "client_secret" => google_client_secret,
+         "refresh_token" => google_refresh_token
+       }, []}
 
     children = [
       LevanngocWeb.Telemetry,
@@ -66,7 +70,10 @@ defmodule Levanngoc.Application do
       Supervisor.child_spec({Task, fn -> ensure_default_admin_setting() end},
         id: :ensure_admin_setting_task
       ),
-      {Goth, name: Levanngoc.Goth, source: google_authentication_source}
+      {Goth, name: Levanngoc.Goth, source: google_authentication_source},
+      Supervisor.child_spec({Task, fn -> perform_google_drive_cleanup() end},
+        id: :google_drive_cleanup_task
+      )
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
@@ -140,6 +147,37 @@ defmodule Levanngoc.Application do
     rescue
       e ->
         IO.puts("Error creating default admin setting: #{inspect(e)}")
+    end
+  end
+
+  # Perform Google Drive cleanup on application start
+  defp perform_google_drive_cleanup do
+    # Wait for Goth to be ready
+    Process.sleep(3000)
+
+    try do
+      conn = Levanngoc.External.GoogleDrive.get_conn()
+
+      case Levanngoc.External.GoogleDrive.bulk_clean_up(conn) do
+        {:ok, _} ->
+          # Create reports folder with current date
+          folder_name = "reports_#{Date.utc_today() |> Calendar.strftime("%Y%m%d")}"
+
+          case Levanngoc.External.GoogleDrive.create_new_folder(conn, folder_name) do
+            {:ok, %{id: folder_id}} ->
+              # Cache the folder ID
+              Cachex.put(:cache, :reports_folder_id, folder_id)
+
+            {:error, _reason} ->
+              :error
+          end
+
+        {:error, _reason} ->
+          :error
+      end
+    rescue
+      _e ->
+        :error
     end
   end
 

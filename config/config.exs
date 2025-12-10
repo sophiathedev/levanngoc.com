@@ -88,7 +88,9 @@ config :levanngoc, Oban,
       timezone: "Asia/Ho_Chi_Minh",
       crontab: [
         # Run billing tracker job at 0:01 AM every day
-        {"1 0 * * *", Levanngoc.Jobs.BillingTracker}
+        {"1 0 * * *", Levanngoc.Jobs.BillingTracker},
+        # Run reports folder refresh job at 3:00 AM every day
+        {"0 3 * * *", Levanngoc.Jobs.ReportsFolderRefresh}
       ]
     }
   ]

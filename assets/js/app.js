@@ -131,6 +131,12 @@ window.addEventListener("phx:download-file", (event) => {
   document.body.removeChild(a)
 })
 
+// Handle opening URL in new tab
+window.addEventListener("phx:open-url", (event) => {
+  const { url } = event.detail
+  window.open(url, "_blank")
+})
+
 window.addEventListener("phx:submit_sepay_form", (event) => {
   const { id } = event.detail
   const form = document.getElementById(id)

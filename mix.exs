@@ -76,8 +76,9 @@ defmodule Levanngoc.MixProject do
       {:multipart, "~> 0.4"},
       {:oban, "~> 2.19"},
       {:logger_file_backend, "~> 0.0.14"},
-      {:goth, "~> 1.4"},
+      {:goth, "~> 1.4.5"},
       {:google_api_drive, "~> 0.32.0"},
+      {:google_api_sheets, "~> 0.35.0"},
       {:cachex, "~> 4.0"}
     ]
   end

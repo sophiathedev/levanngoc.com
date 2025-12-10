@@ -20,9 +20,10 @@ if System.get_env("PHX_SERVER") do
   config :levanngoc, LevanngocWeb.Endpoint, server: true
 end
 
-config :levanngoc,
-       :google_application_credentials,
-       System.get_env("GOOGLE_APPLICATION_CREDENTIALS")
+config :levanngoc, :google_oauth,
+  client_id: System.get_env("GOOGLE_OAUTH_CLIENT_ID"),
+  client_secret: System.get_env("GOOGLE_OAUTH_CLIENT_SECRET"),
+  refresh_token: System.get_env("GOOGLE_OAUTH_REFRESH_TOKEN")
 
 if config_env() == :prod do
   # Configure logger for production to avoid I/O errors
