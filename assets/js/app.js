@@ -75,6 +75,18 @@ const OTPInput = {
   }
 }
 
+const ContentPreview = {
+  mounted() {
+    this.timeout = null
+    this.el.addEventListener('input', () => {
+      clearTimeout(this.timeout)
+      this.timeout = setTimeout(() => {
+        this.pushEvent("update_content", { value: this.el.value })
+      }, 50)
+    })
+  }
+}
+
 // Popup Tracker Hook - Manages anonymous session ID in sessionStorage
 const PopupTracker = {
   mounted() {
@@ -108,7 +120,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
       popup_anonymous_id: anonymousId
     }
   },
-  hooks: { ...colocatedHooks, OTPInput, PopupTracker },
+  hooks: { ...colocatedHooks, OTPInput, PopupTracker, ContentPreview },
 })
 
 // Show progress bar on live navigation and form submits

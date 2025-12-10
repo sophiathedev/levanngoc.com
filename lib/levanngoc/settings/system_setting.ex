@@ -15,6 +15,9 @@ defmodule Levanngoc.Settings.AdminSetting do
     field :token_usage_keyword_ranking, :integer
     field :token_usage_keyword_grouping, :integer
     field :token_usage_checking_duplicate_content, :integer
+    field :privacy_policy, :string
+    field :refund_policy, :string
+    field :terms_of_service, :string
 
     timestamps(type: :utc_datetime)
   end
@@ -32,7 +35,10 @@ defmodule Levanngoc.Settings.AdminSetting do
       :token_usage_check_allintitle,
       :token_usage_keyword_ranking,
       :token_usage_keyword_grouping,
-      :token_usage_checking_duplicate_content
+      :token_usage_checking_duplicate_content,
+      :privacy_policy,
+      :refund_policy,
+      :terms_of_service
     ])
     |> validate_length(:scraping_dog_api_key, max: 1024)
     |> validate_length(:mailgun_api_key, max: 1024)

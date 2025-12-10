@@ -32,6 +32,9 @@ defmodule LevanngocWeb.Router do
       live "/check_keyword_ranking", CheckKeywordRankingLive.Index, :index
       live "/keyword_grouping", KeywordGroupingLive.Index, :index
       live "/check_duplicate_content", CheckDuplicateContentLive.Index, :index
+      live "/privacy-policy", PolicyLive.PrivacyPolicy, :index
+      live "/terms-of-service", PolicyLive.TermsOfService, :index
+      live "/refund-policy", PolicyLive.RefundPolicy, :index
     end
   end
 
@@ -98,6 +101,7 @@ defmodule LevanngocWeb.Router do
       live "/admin/popups", AdminLive.PopupManagement, :index
       live "/admin/popups/new", AdminLive.PopupManagement, :new
       live "/admin/popups/:id/edit", AdminLive.PopupManagement, :edit
+      live "/admin/about-us", AdminLive.AboutUs, :index
     end
   end
 

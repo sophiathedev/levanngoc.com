@@ -31,6 +31,18 @@ defmodule LevanngocWeb.UserLive.Registration do
           phx-mounted={JS.focus()}
         />
 
+        <p class="text-sm text-base-content/70 mb-4">
+          Bằng việc đăng ký, bạn chấp nhận
+          <.link navigate={~p"/privacy-policy"} class="text-primary">
+            Chính sách bảo mật
+          </.link>
+          và
+          <.link navigate={~p"/terms-of-service"} class="text-primary">
+            Điều khoản sử dụng
+          </.link>
+          của chúng tôi.
+        </p>
+
         <.button phx-disable-with="Đang tạo tài khoản..." class="btn btn-primary w-full">
           Đăng ký
         </.button>

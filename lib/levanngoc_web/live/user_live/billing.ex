@@ -350,6 +350,14 @@ defmodule LevanngocWeb.UserLive.Billing do
                   <span>{format_price(Decimal.mult(@selected_plan.price, @months))} VNĐ</span>
                 </div>
               </div>
+
+              <p class="text-sm text-base-content/70">
+                Bằng việc thực hiện thanh toán, bạn chấp nhận
+                <.link navigate={~p"/refund-policy"} class="text-primary">
+                  chính sách hoàn tiền
+                </.link>
+                của chúng tôi.
+              </p>
             </div>
 
             <div class="modal-action">
