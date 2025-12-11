@@ -98,10 +98,6 @@ defmodule LevanngocWeb.AdminLive.AboutUs do
   defp get_policy_content(settings, "refund_policy"), do: settings.refund_policy || ""
   defp get_policy_content(settings, "terms_of_service"), do: settings.terms_of_service || ""
 
-  defp get_policy_url("privacy_policy"), do: "/privacy-policy"
-  defp get_policy_url("refund_policy"), do: "/refund-policy"
-  defp get_policy_url("terms_of_service"), do: "/terms-of-service"
-
   defp wrap_preview_content(content) do
     """
     <!DOCTYPE html>

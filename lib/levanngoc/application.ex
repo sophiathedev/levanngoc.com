@@ -25,12 +25,12 @@ defmodule Levanngoc.Application do
       }
     })
 
-    google_authentication_scopes = [
-      # Allow for drive
-      "https://www.googleapis.com/auth/drive",
-      # Allow for sheets
-      "https://www.googleapis.com/auth/spreadsheets"
-    ]
+    # google_authentication_scopes = [
+    #   # Allow for drive
+    #   "https://www.googleapis.com/auth/drive",
+    #   # Allow for sheets
+    #   "https://www.googleapis.com/auth/spreadsheets"
+    # ]
 
     google_oauth_config = Application.get_env(:levanngoc, :google_oauth)
     google_client_id = google_oauth_config[:client_id]
