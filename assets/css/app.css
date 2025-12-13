@@ -115,6 +115,24 @@
     outline: none !important;
   }
 
+  /* Ensure selects have no outline or focus ring when active/focused */
+  .select,
+  select {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  .select:focus,
+  .select:focus-visible,
+  .select:active,
+  select:focus,
+  select:focus-visible,
+  select:active {
+    outline: none !important;
+    box-shadow: none !important;
+    -webkit-box-shadow: none !important;
+  }
+
   .tab-active {
     @apply text-primary;
   }

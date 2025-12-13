@@ -1,0 +1,1864 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+
+<div class="w-full h-full px-4 flex flex-col">
+  <h1 class="text-3xl font-bold mb-6">Tạo Schema</h1>
+
+  <div class="card w-full bg-base-100 shadow-lg shadow-gray-300 mb-6">
+    <div class="card-body">
+      <h3 class="text-lg font-semibold">Loại Schema bạn muốn tạo?</h3>
+
+      <div class="mt-4">
+        <select
+          id="schema-type-select"
+          class="select select-bordered w-full"
+          onchange="toggleSchemaForm(this.value)"
+        >
+          <option value="Article" selected>Article</option>
+          <option value="Breadcrumb">Breadcrumb</option>
+          <option value="Event">Event</option>
+          <option value="FAQ">FAQ</option>
+          <option value="HowTo">How to</option>
+          <option value="JobPosting">Job posting</option>
+          <option value="LocalBusiness">Local business</option>
+          <option value="Organization">Organization</option>
+          <option value="Person">Person</option>
+          <option value="Recipe">Recipe</option>
+          <option value="Video">Video</option>
+          <option value="Website">Website</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div id="article-form" style="display: block;">
+    <div class="card w-full bg-base-100 shadow-lg shadow-gray-300">
+      <div class="card-body">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+          <!-- Article @type -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Article @type</span>
+            </label>
+            <select id="article-type" class="select select-bordered w-full" onchange="generateSchema()">
+              <option value="Article">Article</option>
+              <option value="NewsArticle">NewsArticle</option>
+              <option value="BlogPosting">BlogPosting</option>
+            </select>
+          </div>
+          
+          <!-- URL -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">URL</span>
+            </label>
+            <input id="article-url" type="url" placeholder="Nhập URL" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+        </div>
+
+        <!-- Headline -->
+        <div class="form-control mt-4">
+          <label class="label">
+            <span class="label-text font-medium">Headline</span>
+          </label>
+          <input id="article-headline" type="text" placeholder="Nhập headline" class="input input-bordered w-full" oninput="generateSchema()" />
+        </div>
+
+        <!-- Mô tả ngắn -->
+        <div class="form-control mt-4">
+          <label class="label">
+            <span class="label-text font-medium">Mô tả ngắn</span>
+          </label>
+          <textarea
+            id="article-description"
+            class="textarea textarea-bordered w-full"
+            placeholder="Nhập mô tả"
+            rows="4"
+            oninput="generateSchema()"
+          ></textarea>
+        </div>
+
+        <!-- Images Section -->
+        <div class="mt-6">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="font-medium flex items-center gap-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-5 h-5"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
+                />
+              </svg>
+              Images
+            </h4>
+            <button
+              type="button"
+              onclick="addImageUrl()"
+              class="btn btn-primary btn-sm"
+            >
+              + Thêm URL
+            </button>
+          </div>
+
+          <div id="image-urls-container" class="space-y-3">
+            <div class="flex items-end image-url-row" data-id="1">
+              <div class="form-control flex-1">
+                <label class="label py-1">
+                  <span class="label-text text-sm">Images URL 1</span>
+                </label>
+                <input
+                  type="url"
+                  placeholder="URL"
+                  class="input input-bordered w-full article-image-url"
+                  oninput="generateSchema()"
+                />
+              </div>
+              <div class="w-10 h-12"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Author Section -->
+        <div class="mt-6">
+          <h4 class="font-medium flex items-center gap-2 mb-3">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="1.5"
+              stroke="currentColor"
+              class="w-5 h-5"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
+              />
+            </svg>
+            Author
+          </h4>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <!-- Author @type -->
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text font-medium">Author @type</span>
+              </label>
+              <select id="article-author-type" class="select select-bordered w-full" onchange="generateSchema()">
+                <option value="" selected>-- Chọn loại --</option>
+                <option value="Person">Person</option>
+                <option value="Organization">Organization</option>
+              </select>
+            </div>
+            
+            <!-- Author -->
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text font-medium">Author</span>
+              </label>
+              <input id="article-author-name" type="text" placeholder="Tên Author" class="input input-bordered w-full" oninput="generateSchema()" />
+            </div>
+          </div>
+
+          <!-- Author URL -->
+          <div class="form-control mt-4">
+            <label class="label">
+              <span class="label-text font-medium">Author URL</span>
+            </label>
+            <input
+              id="article-author-url"
+              type="url"
+              placeholder="Nhập Author URL"
+              class="input input-bordered w-full"
+              oninput="generateSchema()"
+            />
+          </div>
+        </div>
+
+        <!-- Publish Section -->
+        <div class="mt-6">
+          <h4 class="font-medium flex items-center gap-2 mb-3">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="1.5"
+              stroke="currentColor"
+              class="w-5 h-5"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"
+              />
+            </svg>
+            Publish
+          </h4>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <!-- Publisher -->
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text font-medium">Publisher</span>
+              </label>
+              <input
+                id="article-publisher-name"
+                type="text"
+                placeholder="Nhập Publisher"
+                class="input input-bordered w-full"
+                oninput="generateSchema()"
+              />
+            </div>
+            
+            <!-- Publisher logo URL -->
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text font-medium">Publisher logo URL</span>
+              </label>
+              <input
+                id="article-publisher-logo"
+                type="url"
+                placeholder="Nhập Publisher logo URL"
+                class="input input-bordered w-full"
+                oninput="generateSchema()"
+              />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+            <!-- Ngày published -->
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text font-medium">Ngày published</span>
+              </label>
+              <input id="article-date-published" type="date" class="input input-bordered w-full" onchange="generateSchema()" />
+            </div>
+            
+            <!-- Ngày cập nhật -->
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text font-medium">Ngày cập nhật</span>
+              </label>
+              <input id="article-date-modified" type="date" class="input input-bordered w-full" onchange="generateSchema()" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="breadcrumb-form" style="display: none;">
+    <div class="card w-full bg-base-100 shadow-lg shadow-gray-300">
+      <div class="card-body">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-xl font-semibold">Breadcrumb</h3>
+          <button
+            type="button"
+            onclick="addBreadcrumbItem()"
+            class="btn btn-primary btn-sm"
+          >
+            + Thêm Breadcrumb
+          </button>
+        </div>
+
+        <div id="breadcrumb-items-container" class="space-y-4">
+          <div class="breadcrumb-item" data-id="1">
+            <h4 class="font-medium -mb-3">Tên Page #1</h4>
+            <div class="flex items-end">
+              <div class="form-control mr-3" style="flex: 0 0 300px;">
+                <input
+                  type="text"
+                  placeholder="Nhập tên page #1"
+                  class="input input-bordered w-full breadcrumb-name"
+                  oninput="generateSchema()"
+                />
+              </div>
+              <div class="form-control flex-1">
+                <input
+                  type="url"
+                  placeholder="URL"
+                  class="input input-bordered w-full breadcrumb-url"
+                  oninput="generateSchema()"
+                />
+              </div>
+              <div class="w-10 h-12"></div>
+            </div>
+          </div>
+
+          <div class="breadcrumb-item" data-id="2">
+            <h4 class="font-medium -mb-3">Tên Page #2</h4>
+            <div class="flex items-end">
+              <div class="form-control mr-3" style="flex: 0 0 300px;">
+                <input
+                  type="text"
+                  placeholder="Nhập tên page #2"
+                  class="input input-bordered w-full breadcrumb-name"
+                  oninput="generateSchema()"
+                />
+              </div>
+              <div class="form-control flex-1">
+                <input
+                  type="url"
+                  placeholder="URL"
+                  class="input input-bordered w-full breadcrumb-url"
+                  oninput="generateSchema()"
+                />
+              </div>
+              <div class="w-10 h-12"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="faq-form" style="display: none;">
+    <div class="card w-full bg-base-100 shadow-lg shadow-gray-300">
+      <div class="card-body">
+        <h3 class="text-xl font-semibold mb-6">FAQ</h3>
+
+        <div class="flex items-center justify-between mb-4">
+          <h4 class="text-lg font-semibold">Danh sách câu hỏi</h4>
+          <button
+            type="button"
+            onclick="addFaqItem()"
+            class="btn btn-primary btn-sm"
+          >
+            + Thêm câu hỏi
+          </button>
+        </div>
+
+        <div id="faq-items-container" class="space-y-6">
+        </div>
+
+        <div id="faq-bottom-button" class="flex justify-center mt-6" style="display: none;">
+          <button
+            type="button"
+            onclick="addFaqItem()"
+            class="btn btn-primary btn-sm"
+          >
+            + Thêm câu hỏi
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="howto-form" style="display: none;">
+    <div class="card w-full bg-base-100 shadow-lg shadow-gray-300">
+      <div class="card-body">
+        <h3 class="text-xl font-semibold mb-6">How-to</h3>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <!-- Name -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Name</span>
+            </label>
+            <input id="howto-name" type="text" placeholder="Nhập tên" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+          
+          <!-- Total time -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Total time (minutes)</span>
+            </label>
+            <input id="howto-total-time" type="number" placeholder="Tổng thời gian (phút)" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+          <!-- Estimate cost -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Estimate cost</span>
+            </label>
+            <input id="howto-cost" type="text" placeholder="Giá" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+          
+          <!-- Currency -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Currency</span>
+            </label>
+            <input id="howto-currency" type="text" placeholder="Currency" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+        </div>
+
+        <!-- Description -->
+        <div class="form-control mt-4">
+          <label class="label">
+            <span class="label-text font-medium">Mô tả</span>
+          </label>
+          <textarea
+            id="howto-description"
+            placeholder="Nhập mô tả"
+            class="textarea textarea-bordered w-full h-24"
+            oninput="generateSchema()"
+          ></textarea>
+        </div>
+
+        <!-- Supply Section -->
+        <div class="mt-6">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div>
+              <div id="supply-container" class="space-y-3">
+              </div>
+              <button
+                type="button"
+                onclick="addSupply()"
+                class="btn btn-primary btn-block mt-3"
+              >
+                + Supply
+              </button>
+            </div>
+
+            <!-- Tool Section -->
+            <div>
+              <div id="tool-container" class="space-y-3">
+              </div>
+              <button
+                type="button"
+                onclick="addTool()"
+                class="btn btn-primary btn-block mt-3"
+              >
+                + Tool
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Steps Section -->
+        <div class="mt-6">
+          <div id="steps-container" class="space-y-6">
+            <div class="border border-base-300 rounded-lg p-4 step-item" data-id="1">
+              <h4 class="font-medium mb-4">Step #1: Instruction</h4>
+
+              <div class="form-control mb-4">
+                <textarea
+                  placeholder="Hướng dẫn"
+                  class="textarea textarea-bordered w-full h-24 step-instruction"
+                  oninput="generateSchema()"
+                ></textarea>
+              </div>
+
+              <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text">Image Url</span>
+                  </label>
+                  <input type="url" placeholder="Nhập URL" class="input input-bordered w-full step-image" oninput="generateSchema()" />
+                </div>
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text">Name</span>
+                  </label>
+                  <input type="text" placeholder="Nhập tên" class="input input-bordered w-full step-name" oninput="generateSchema()" />
+                </div>
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text">URL</span>
+                  </label>
+                  <input type="url" placeholder="Nhập URL" class="input input-bordered w-full step-url" oninput="generateSchema()" />
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onclick="removeStep(1)"
+                class="btn btn-error btn-sm mt-4"
+              >
+                Xóa Step
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onclick="addStep()"
+            class="btn btn-primary btn-sm mt-4"
+          >
+            + Step
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="jobposting-form" style="display: none;">
+    <div class="card w-full bg-base-100 shadow-lg shadow-gray-300">
+      <div class="card-body">
+        <h3 class="text-xl font-semibold mb-6">Job Posting</h3>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <!-- Job title -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Job title</span>
+            </label>
+            <input id="job-title" type="text" placeholder="Vị trí" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+          
+          <!-- Identifier -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Identifier</span>
+            </label>
+            <input id="job-identifier" type="text" placeholder="Identifier" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+        </div>
+
+        <!-- Job's description (in HTML) -->
+        <div class="form-control mt-4">
+          <label class="label">
+            <span class="label-text font-medium">Job's description (in HTML)</span>
+          </label>
+          <textarea
+            id="job-description"
+            placeholder="Job's description (in HTML)"
+            class="textarea textarea-bordered w-full h-32"
+            oninput="generateSchema()"
+          ></textarea>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+          <!-- Company -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Company</span>
+            </label>
+            <input id="job-company" type="text" placeholder="Company" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+          
+          <!-- Company URL -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Company URL</span>
+            </label>
+            <input id="job-company-url" type="url" placeholder="Company URL" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+
+          <!-- Company logo -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Company logo</span>
+            </label>
+            <input id="job-company-logo" type="url" placeholder="Company logo" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+          <!-- Industry -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Industry</span>
+            </label>
+            <input id="job-industry" type="text" placeholder="Industry" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+          
+          <!-- Employment type -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Employment type</span>
+            </label>
+            <select id="job-employment-type" class="select select-bordered w-full" onchange="generateSchema()">
+              <option value="">Chọn loại</option>
+              <option value="FULL_TIME">Full Time</option>
+              <option value="PART_TIME">Part Time</option>
+              <option value="CONTRACTOR">Contractor</option>
+              <option value="TEMPORARY">Temporary</option>
+              <option value="INTERN">Intern</option>
+              <option value="VOLUNTEER">Volunteer</option>
+              <option value="PER_DIEM">Per Diem</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+
+          <!-- Work hours -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Work hours</span>
+            </label>
+            <input id="job-work-hours" type="text" placeholder="(e.g. 8am-5pm, shift)" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+          <!-- Date posted -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Date posted</span>
+            </label>
+            <input id="job-date-posted" type="date" placeholder="Date posted" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+          
+          <!-- Expire date -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Expire date</span>
+            </label>
+            <input id="job-expire-date" type="date" placeholder="Expire date" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4 items-end">
+          <!-- Remote job -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input id="job-remote" type="checkbox" class="checkbox" onchange="generateSchema()" />
+              <span class="label-text font-medium">Remote job</span>
+            </label>
+          </div>
+
+          <!-- Country -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Country</span>
+            </label>
+            <select id="job-country" class="select select-bordered w-full" onchange="generateSchema()">
+              <option value="">Chọn tỉnh</option>
+              <option value="VN">🇻🇳 Vietnam VN</option>
+            </select>
+          </div>
+          
+          <!-- State/Province/Region -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">State/Province/Region</span>
+            </label>
+            <select id="job-region" class="select select-bordered w-full" onchange="generateSchema()">
+              <option value="">Chọn tỉnh</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+          <!-- Street -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Street</span>
+            </label>
+            <input id="job-street" type="text" placeholder="Street" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+          
+          <!-- City -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">City</span>
+            </label>
+            <input id="job-city" type="text" placeholder="City" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+
+          <!-- Zip code -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Zip code</span>
+            </label>
+            <input id="job-zip" type="text" placeholder="Zip code" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mt-4">
+          <!-- Salary(or min. salary) -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Salary(or min. salary)</span>
+            </label>
+            <input id="job-salary-min" type="text" placeholder="Salary" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+          
+          <!-- Max Salary -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Max Salary</span>
+            </label>
+            <input id="job-salary-max" type="text" placeholder="Salary" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+
+          <!-- Currency -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Currency</span>
+            </label>
+            <select id="job-currency" class="select select-bordered w-full" onchange="generateSchema()">
+              <option value="">Currency</option>
+              <option value="AUD">AUD</option>
+              <option value="USD">USD</option>
+              <option value="VND">VND</option>
+              <option value="EUR">EUR</option>
+              <option value="GBP">GBP</option>
+            </select>
+          </div>
+
+          <!-- Per... -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Period</span>
+            </label>
+            <select id="job-salary-period" class="select select-bordered w-full" onchange="generateSchema()">
+              <option value="">Period</option>
+              <option value="HOUR">Hour</option>
+              <option value="DAY">Day</option>
+              <option value="WEEK">Week</option>
+              <option value="MONTH">Month</option>
+              <option value="YEAR">Year</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+          <!-- Responsibilities -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Responsibilities</span>
+            </label>
+            <input type="text" placeholder="Responsibilities" class="input input-bordered w-full" />
+          </div>
+          
+          <!-- Skills -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Skills</span>
+            </label>
+            <input type="text" placeholder="Skills" class="input input-bordered w-full" />
+          </div>
+
+          <!-- Qualifications -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Qualifications</span>
+            </label>
+            <input type="text" placeholder="Qualifications" class="input input-bordered w-full" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+          <!-- Education requirements -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Education requirements</span>
+            </label>
+            <input type="text" placeholder="Education requirements" class="input input-bordered w-full" />
+          </div>
+          
+          <!-- Experience requirements -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Experience requirements</span>
+            </label>
+            <input type="text" placeholder="Experience requirements" class="input input-bordered w-full" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="localbusiness-form" style="display: none;">
+    <div class="card w-full bg-base-100 shadow-lg shadow-gray-300">
+      <div class="card-body">
+        <h3 class="text-xl font-semibold mb-6">Local Business</h3>
+
+        <!-- LocalBusiness @type -->
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text font-medium">LocalBusiness @type</span>
+          </label>
+          <select id="localbusiness-type" class="select select-bordered w-full" onchange="generateSchema()">
+            <option value="LocalBusiness" selected>LocalBusiness</option>
+            <option value="AnimalShelter">AnimalShelter</option>
+            <option value="ArchiveOrganization">ArchiveOrganization</option>
+            <option value="AutomotiveBusiness">AutomotiveBusiness</option>
+            <option value="ChildCare">ChildCare</option>
+            <option value="Dentist">Dentist</option>
+            <option value="DryCleaningOrLaundry">DryCleaningOrLaundry</option>
+            <option value="EmergencyService">EmergencyService</option>
+            <option value="EmploymentAgency">EmploymentAgency</option>
+            <option value="EntertainmentBusiness">EntertainmentBusiness</option>
+            <option value="FinancialService">FinancialService</option>
+            <option value="FoodEstablishment">FoodEstablishment</option>
+            <option value="GovernmentOffice">GovernmentOffice</option>
+            <option value="HealthAndBeautyBusiness">HealthAndBeautyBusiness</option>
+            <option value="HomeAndConstructionBusiness">HomeAndConstructionBusiness</option>
+            <option value="InternetCafe">InternetCafe</option>
+            <option value="LegalService">LegalService</option>
+            <option value="Library">Library</option>
+            <option value="LodgingBusiness">LodgingBusiness</option>
+            <option value="MedicalBusiness">MedicalBusiness</option>
+            <option value="ProfessionalService">ProfessionalService</option>
+            <option value="RadioStation">RadioStation</option>
+            <option value="RealEstateAgent">RealEstateAgent</option>
+            <option value="RecyclingCenter">RecyclingCenter</option>
+            <option value="SelfStorage">SelfStorage</option>
+            <option value="ShoppingCenter">ShoppingCenter</option>
+            <option value="SportsActivityLocation">SportsActivityLocation</option>
+            <option value="Store">Store</option>
+            <option value="TelevisionStation">TelevisionStation</option>
+            <option value="TouristInformationCenter">TouristInformationCenter</option>
+            <option value="TravelAgency">TravelAgency</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+          <!-- Name -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Name</span>
+            </label>
+            <input id="localbusiness-name" type="text" placeholder="..." class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+          
+          <!-- Image URL -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Image URL</span>
+            </label>
+            <input id="localbusiness-image" type="url" placeholder="nhập URL" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+
+          <!-- @id(URL) -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">@id(URL)</span>
+            </label>
+            <input id="localbusiness-id" type="url" placeholder="Nhập id" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+          <!-- URL -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">URL</span>
+            </label>
+            <input id="localbusiness-url" type="url" placeholder="Nhập URL" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+          
+          <!-- Phone -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Phone</span>
+            </label>
+            <input id="localbusiness-phone" type="tel" placeholder="Nhập sđt" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+
+          <!-- Price range -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Price range</span>
+            </label>
+            <input id="localbusiness-price" type="text" placeholder="Nhập giá" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+          <!-- Street -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Street</span>
+            </label>
+            <input id="localbusiness-street" type="text" placeholder="tên đường" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+          
+          <!-- City -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">City</span>
+            </label>
+            <input id="localbusiness-city" type="text" placeholder="Nhập thành phố" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+
+          <!-- Zip code -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Zip code</span>
+            </label>
+            <input id="localbusiness-zip" type="text" placeholder="..." class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+          <!-- Country -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Country</span>
+            </label>
+            <select id="localbusiness-country" class="select select-bordered w-full" onchange="generateSchema()">
+              <option value="">Select country</option>
+              <option value="VN">Vietnam</option>
+            </select>
+          </div>
+          
+          <!-- State/Province/Region -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">State/Province/Region</span>
+            </label>
+            <select id="localbusiness-region" class="select select-bordered w-full" onchange="generateSchema()">
+              <option value="">Select state</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+          <!-- Latitude -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Latitude</span>
+            </label>
+            <input id="localbusiness-lat" type="number" placeholder="0" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+          
+          <!-- Longitude -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Longitude</span>
+            </label>
+            <input id="localbusiness-lng" type="number" placeholder="0" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+          <!-- Open 24/7 -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input id="localbusiness-247" type="checkbox" class="checkbox" onchange="generateSchema()" />
+              <span class="label-text font-medium">Open 24/7</span>
+            </label>
+          </div>
+          
+          <!-- Social profiles -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Social profiles</span>
+            </label>
+            <input id="localbusiness-socials" type="text" placeholder="" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+        </div>
+
+        <!-- Opening Hours Section -->
+        <div class="mt-6">
+          <button
+            type="button"
+            onclick="addMainOpeningHour()"
+            class="btn btn-primary btn-sm"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+            Opening hours
+          </button>
+
+          <div id="main-opening-hours-container" class="space-y-4 mt-4">
+          </div>
+        </div>
+
+        <!-- Departments Section -->
+        <div class="mt-6">
+          <button
+            type="button"
+            onclick="addDepartment()"
+            class="btn btn-primary btn-sm"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Add department
+          </button>
+
+          <div id="departments-container" class="space-y-6 mt-4">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="person-form" style="display: none;">
+    <div class="card w-full bg-base-100 shadow-lg shadow-gray-300">
+      <div class="card-body">
+        <h3 class="text-xl font-semibold mb-6">Person</h3>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <!-- Name -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Name</span>
+            </label>
+            <input id="person-name" type="text" placeholder="Nhập tên" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+          
+          <!-- URL -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">URL</span>
+            </label>
+            <input id="person-url" type="url" placeholder="URL" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+          <!-- Picture URL -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Picture URL</span>
+            </label>
+            <input id="person-image" type="url" placeholder="URL" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+          
+          <!-- Job title -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Job title</span>
+            </label>
+            <input id="person-job-title" type="text" placeholder="Job title" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+        </div>
+
+        <!-- Company -->
+        <div class="form-control mt-4">
+          <label class="label">
+            <span class="label-text font-medium">Company</span>
+          </label>
+          <input id="person-company" type="text" placeholder="Nhập tên công ty" class="input input-bordered w-full" oninput="generateSchema()" />
+        </div>
+
+        <!-- Social profiles -->
+        <div class="form-control mt-4">
+          <label class="label">
+            <span class="label-text font-medium">Social profiles</span>
+          </label>
+          <div id="social-profiles-container" class="space-y-3">
+          </div>
+          <button
+            type="button"
+            onclick="addSocialProfile()"
+            class="btn btn-primary btn-sm mt-3"
+          >
+            + Add Social Profile
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="website-form" style="display: none;">
+    <div class="card w-full bg-base-100 shadow-lg shadow-gray-300">
+      <div class="card-body">
+        <h3 class="text-xl font-semibold mb-6">Website - Sitelinks Searchbox</h3>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <!-- Website's name -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Website's name</span>
+            </label>
+            <input id="website-name" type="text" placeholder="Nhập tên website" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+          
+          <!-- URL -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">URL</span>
+            </label>
+            <input id="website-url" type="url" placeholder="Nhập URL" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+        </div>
+
+        <!-- Internal site search URL -->
+        <div class="form-control mt-4">
+          <label class="label">
+            <span class="label-text font-medium">Internal site search URL (e.g. https://example.com/search?q=)</span>
+          </label>
+          <input id="website-search-url" type="url" placeholder="Nhập URL tìm kiếm" class="input input-bordered w-full" oninput="generateSchema()" />
+        </div>
+
+        <!-- Optional: string in the search URL after the query -->
+        <div class="form-control mt-4">
+          <label class="label">
+            <span class="label-text font-medium">Optional: string in the search URL after the query</span>
+          </label>
+          <input id="website-search-suffix" type="text" placeholder="Chuỗi sau query" class="input input-bordered w-full" oninput="generateSchema()" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="video-form" style="display: none;">
+    <div class="card w-full bg-base-100 shadow-lg shadow-gray-300">
+      <div class="card-body">
+        <h3 class="text-xl font-semibold mb-6">Video</h3>
+
+        <!-- Name -->
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text font-medium">Name</span>
+          </label>
+          <input id="video-name" type="text" placeholder="Nhập tên" class="input input-bordered w-full" oninput="generateSchema()" />
+        </div>
+
+        <!-- Video's description -->
+        <div class="form-control mt-4">
+          <label class="label">
+            <span class="label-text font-medium">Video's description</span>
+          </label>
+          <textarea
+            id="video-description"
+            class="textarea textarea-bordered w-full"
+            placeholder="Mô tả"
+            rows="4"
+            oninput="generateSchema()"
+          ></textarea>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+          <!-- Upload Date -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Upload Date</span>
+            </label>
+            <input id="video-upload-date" type="date" placeholder="Date posted" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+          
+          <!-- Minutes -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Minutes</span>
+            </label>
+            <input id="video-minutes" type="number" placeholder="Phút" class="input input-bordered w-full" min="0" oninput="generateSchema()" />
+          </div>
+          
+          <!-- Seconds -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Seconds</span>
+            </label>
+            <input id="video-seconds" type="number" placeholder="Giây" class="input input-bordered w-full" min="0" max="59" oninput="generateSchema()" />
+          </div>
+        </div>
+
+        <!-- Thumbnail URLs -->
+        <div class="form-control mt-4">
+          <label class="label">
+            <span class="label-text font-medium">Thumbnail URL #1</span>
+          </label>
+          <div id="video-thumbnails-container" class="space-y-3">
+            <div class="flex items-end gap-3 video-thumbnail-row" data-id="1">
+              <div class="form-control flex-1">
+                <input
+                  type="url"
+                  placeholder="URL"
+                  class="input input-bordered w-full video-thumbnail-url"
+                  oninput="generateSchema()"
+                />
+              </div>
+              <button
+                type="button"
+                onclick="removeVideoThumbnail(1)"
+                class="btn btn-ghost text-error"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="w-5 h-5"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <button
+            type="button"
+            onclick="addVideoThumbnail()"
+            class="btn btn-primary btn-sm mt-3"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+            </svg>
+            Image
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+          <!-- Content URL -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Content URL</span>
+            </label>
+            <input type="url" placeholder="URL" class="input input-bordered w-full" />
+          </div>
+          
+          <!-- Embed URL -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Embed URL</span>
+            </label>
+            <input type="url" placeholder="URL" class="input input-bordered w-full" />
+          </div>
+        </div>
+
+        <!-- SeekToAction Target URL -->
+        <div class="form-control mt-4">
+          <label class="label">
+            <span class="label-text font-medium">SeekToAction Target URL</span>
+          </label>
+          <input type="url" placeholder="URL" class="input input-bordered w-full" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="recipe-form" style="display: none;">
+    <div class="card w-full bg-base-100 shadow-lg shadow-gray-300">
+      <div class="card-body">
+        <h3 class="text-xl font-semibold mb-6">Recipe</h3>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <!-- Name -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Name</span>
+            </label>
+            <input id="recipe-name" type="text" placeholder="Nhập tên" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+          
+          <!-- Recipe's description -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Recipe's description</span>
+            </label>
+            <textarea
+              id="recipe-description"
+              class="textarea textarea-bordered w-full"
+              placeholder="Mô tả"
+              rows="3"
+              oninput="generateSchema()"
+            ></textarea>
+          </div>
+        </div>
+
+        <!-- Keywords -->
+        <div class="form-control mt-4">
+          <label class="label">
+            <span class="label-text font-medium">Keywords</span>
+          </label>
+          <input id="recipe-keywords" type="text" placeholder="Từ khóa" class="input input-bordered w-full" oninput="generateSchema()" />
+        </div>
+
+        <!-- Thumbnail URLs -->
+        <div class="form-control mt-4">
+          <label class="label">
+            <span class="label-text font-medium">Thumbnail URL #1</span>
+          </label>
+          <div id="recipe-thumbnails-container" class="space-y-3">
+            <div class="flex items-end gap-3 recipe-thumbnail-row" data-id="1">
+              <div class="form-control flex-1">
+                <input
+                  type="url"
+                  placeholder="URL"
+                  class="input input-bordered w-full recipe-thumbnail-url"
+                  oninput="generateSchema()"
+                />
+              </div>
+              <button
+                type="button"
+                onclick="removeRecipeThumbnail(1)"
+                class="btn btn-ghost text-error"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="w-5 h-5"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <button
+            type="button"
+            onclick="addRecipeThumbnail()"
+            class="btn btn-primary btn-sm mt-3"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+            </svg>
+            Image
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+          <!-- Content URL -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Content URL</span>
+            </label>
+            <input type="url" placeholder="URL" class="input input-bordered w-full" />
+          </div>
+          
+          <!-- Embed URL -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Embed URL</span>
+            </label>
+            <input type="url" placeholder="URL" class="input input-bordered w-full" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+          <!-- Creator -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Creator</span>
+            </label>
+            <input id="recipe-creator" type="text" placeholder="..." class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+          
+          <!-- Date published -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Date published</span>
+            </label>
+            <input type="date" placeholder="Date posted" class="input input-bordered w-full" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+          <!-- Preparation (min) -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Preparation (min)</span>
+            </label>
+            <input id="recipe-prep-time" type="number" placeholder="..." class="input input-bordered w-full" min="0" oninput="generateSchema()" />
+          </div>
+          
+          <!-- Cooking (min) -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Cooking (min)</span>
+            </label>
+            <input id="recipe-cook-time" type="number" placeholder="..." class="input input-bordered w-full" min="0" oninput="generateSchema()" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+          <!-- Category -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Category</span>
+            </label>
+            <select id="recipe-category" class="select select-bordered w-full" onchange="generateSchema()">
+              <option value="" selected>Not specified</option>
+              <option value="appetizer">Appetizer</option>
+              <option value="entree">Entree</option>
+              <option value="dessert">Dessert</option>
+            </select>
+          </div>
+          
+          <!-- Cuisine -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Cuisine</span>
+            </label>
+            <input type="text" placeholder="..." class="input input-bordered w-full" />
+          </div>
+          
+          <!-- Servings -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Servings</span>
+            </label>
+            <input type="text" placeholder="..." class="input input-bordered w-full" />
+          </div>
+        </div>
+
+        <!-- Ingredients Section -->
+        <div class="mt-6">
+          <div id="recipe-ingredients-container" class="space-y-3">
+            <div class="recipe-ingredient-item" data-id="1">
+              <label class="label">
+                <span class="label-text font-medium">Ingredient #1</span>
+              </label>
+              <div class="flex items-end gap-3">
+                <div class="form-control flex-1">
+                  <input
+                    type="text"
+                    placeholder="thành phần"
+                    class="input input-bordered w-full recipe-ingredient-text"
+                    oninput="generateSchema()"
+                  />
+                </div>
+              <button
+                type="button"
+                onclick="removeRecipeIngredient(1)"
+                class="btn btn-ghost text-error"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="w-5 h-5"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                  />
+                </svg>
+              </button>
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onclick="addRecipeIngredient()"
+            class="btn btn-primary btn-sm mt-3"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Ingredient
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
+          <!-- Nutrition: Serving size -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Nutrition: Serving size</span>
+            </label>
+            <input type="text" placeholder="..." class="input input-bordered w-full" />
+          </div>
+          
+          <!-- Nutrition: Calories -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Nutrition: Calories</span>
+            </label>
+            <input id="recipe-nutrition-calories" type="text" placeholder="..." class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+          
+          <!-- Nutrition: Fat (grams) -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Nutrition: Fat (grams)</span>
+            </label>
+            <input type="text" placeholder="..." class="input input-bordered w-full" />
+          </div>
+        </div>
+
+        <!-- Steps Section -->
+        <div class="mt-6">
+          <div id="recipe-steps-container" class="space-y-6">
+            <div class="border border-base-300 rounded-lg p-4 relative recipe-step-item" data-id="1">
+              <button
+                type="button"
+                onclick="removeRecipeStep(1)"
+                class="btn btn-ghost btn-sm btn-square absolute top-2 right-2 text-error"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="w-5 h-5"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                  />
+                </svg>
+              </button>
+              <h4 class="font-medium mb-3">Step #1</h4>
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="form-control lg:col-span-2">
+                  <label class="label">
+                    <span class="label-text">Step #1</span>
+                  </label>
+                  <textarea
+                    placeholder="bước 1"
+                    class="textarea textarea-bordered w-full recipe-step-text"
+                    rows="2"
+                    oninput="generateSchema()"
+                  ></textarea>
+                </div>
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text">Name</span>
+                  </label>
+                  <input type="text" placeholder="Tên..." class="input input-bordered w-full" />
+                </div>
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text">URL</span>
+                  </label>
+                  <input type="url" placeholder="URL" class="input input-bordered w-full" />
+                </div>
+                <div class="form-control lg:col-span-2">
+                  <label class="label">
+                    <span class="label-text">Image</span>
+                  </label>
+                  <input type="url" placeholder="URL" class="input input-bordered w-full" />
+                </div>
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onclick="addRecipeStep()"
+            class="btn btn-primary btn-sm mt-3"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Step
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6">
+          <!-- Aggregate rating value -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Aggregate rating value</span>
+            </label>
+            <input type="text" placeholder="..." class="input input-bordered w-full" />
+          </div>
+          
+          <!-- Number of ratings -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Number of ratings</span>
+            </label>
+            <input type="text" placeholder="..." class="input input-bordered w-full" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+          <!-- Highest value allowed -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Highest value allowed</span>
+            </label>
+            <input type="text" placeholder="..." class="input input-bordered w-full" />
+          </div>
+          
+          <!-- Lowest value allowed -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Lowest value allowed</span>
+            </label>
+            <input type="text" placeholder="..." class="input input-bordered w-full" />
+          </div>
+        </div>
+
+        <!-- Reviews Section -->
+        <div class="mt-6">
+          <div id="recipe-reviews-container" class="space-y-6">
+            <div class="border border-base-300 rounded-lg p-4 relative recipe-review-item" data-id="1">
+              <button
+                type="button"
+                onclick="removeRecipeReview(1)"
+                class="btn btn-ghost btn-sm btn-square absolute top-2 right-2 text-error"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="w-5 h-5"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                  />
+                </svg>
+              </button>
+              <h4 class="font-medium mb-3">#1 Review's name</h4>
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text">#1 Review's name</span>
+                  </label>
+                  <input type="text" placeholder="bước 1" class="input input-bordered w-full recipe-review-name" oninput="generateSchema()" />
+                </div>
+                <div class="form-control lg:row-span-2">
+                  <label class="label">
+                    <span class="label-text">Review's body</span>
+                  </label>
+                  <textarea
+                    placeholder="..."
+                    class="textarea textarea-bordered w-full recipe-review-body"
+                    rows="4"
+                    oninput="generateSchema()"
+                  ></textarea>
+                </div>
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text">Rating</span>
+                  </label>
+                  <input type="text" placeholder="..." class="input input-bordered w-full" />
+                </div>
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text">Date</span>
+                  </label>
+                  <input type="date" placeholder="Date posted" class="input input-bordered w-full" />
+                </div>
+                <div class="form-control lg:col-span-2">
+                  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div class="form-control">
+                      <label class="label">
+                        <span class="label-text">Author</span>
+                      </label>
+                      <input type="text" placeholder="..." class="input input-bordered w-full recipe-review-author" oninput="generateSchema()" />
+                    </div>
+                    <div class="form-control">
+                      <label class="label">
+                        <span class="label-text">Publisher</span>
+                      </label>
+                      <input type="text" placeholder="..." class="input input-bordered w-full" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onclick="addRecipeReview()"
+            class="btn btn-primary btn-sm mt-3"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Review
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="event-form" style="display: none;">
+    <div class="card w-full bg-base-100 shadow-lg shadow-gray-300">
+      <div class="card-body">
+        <h3 class="text-xl font-semibold mb-4">Event</h3>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <!-- Event name -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Event name</span>
+            </label>
+            <input id="event-name" type="text" placeholder="Nhập tên" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+          
+          <!-- Image URL -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Image URL</span>
+            </label>
+            <input id="event-image" type="url" placeholder="Nhập URL" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+        </div>
+
+        <!-- Mô tả ngắn -->
+        <div class="form-control mt-4">
+          <label class="label">
+            <span class="label-text font-medium">Mô tả ngắn</span>
+          </label>
+          <textarea
+            id="event-description"
+            class="textarea textarea-bordered w-full"
+            placeholder="Nhập mô tả"
+            rows="4"
+            oninput="generateSchema()"
+          ></textarea>
+        </div>
+
+        <!-- Thời gian Section -->
+        <div class="mt-6">
+          <h4 class="font-medium flex items-center gap-2 mb-3">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="1.5"
+              stroke="currentColor"
+              class="w-5 h-5"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+              />
+            </svg>
+            Thời gian
+          </h4>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <!-- Bắt đầu -->
+            <div>
+              <label class="label">
+                <span class="label-text font-medium">Bắt đầu</span>
+              </label>
+              <div class="grid grid-cols-2 gap-2">
+                <input id="event-start-date" type="date" placeholder="Chọn ngày" class="input input-bordered w-full" oninput="generateSchema()" />
+                <input id="event-start-time" type="time" placeholder="Chọn giờ" class="input input-bordered w-full" oninput="generateSchema()" />
+              </div>
+            </div>
+            
+            <!-- Kết thúc -->
+            <div>
+              <label class="label">
+                <span class="label-text font-medium">Kết thúc</span>
+              </label>
+              <div class="grid grid-cols-2 gap-2">
+                <input id="event-end-date" type="date" placeholder="Chọn ngày" class="input input-bordered w-full" oninput="generateSchema()" />
+                <input id="event-end-time" type="time" placeholder="Chọn giờ" class="input input-bordered w-full" oninput="generateSchema()" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+          <!-- Event status -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Event status</span>
+            </label>
+            <select id="event-status" class="select select-bordered w-full" onchange="generateSchema()">
+              <option value="" selected>None</option>
+              <option value="EventScheduled">EventScheduled</option>
+              <option value="EventCancelled">EventCancelled</option>
+              <option value="EventMovedOnline">EventMovedOnline</option>
+              <option value="EventPostponed">EventPostponed</option>
+              <option value="EventRescheduled">EventRescheduled</option>
+            </select>
+          </div>
+          
+          <!-- Attendance Mode -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Attendance Mode</span>
+            </label>
+            <select id="event-attendance-mode" class="select select-bordered w-full" onchange="generateSchema()">
+              <option value="" selected>None</option>
+              <option value="OfflineEventAttendanceMode">OfflineEventAttendanceMode</option>
+              <option value="OnlineEventAttendanceMode">OnlineEventAttendanceMode</option>
+              <option value="MixedEventAttendanceMode">MixedEventAttendanceMode</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+          <!-- Performer @type -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Performer @type</span>
+            </label>
+            <select id="event-performer-type" class="select select-bordered w-full" onchange="generateSchema()">
+              <option value="" selected>None</option>
+              <option value="Person">Person</option>
+              <option value="PerformingGroup">Performing Group</option>
+              <option value="MusicGroup">Music Group</option>
+              <option value="DanceGroup">Dance Group</option>
+              <option value="TheaterGroup">Theater Group</option>
+            </select>
+          </div>
+          
+          <!-- Performer's name -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Performer's name</span>
+            </label>
+            <input id="event-performer-name" type="text" placeholder="Nhập tên" class="input input-bordered w-full" oninput="generateSchema()" />
+          </div>
+        </div>
+
+        <!-- Ticket Type Section -->
+        <div class="mt-6">
+          <h4 class="font-medium mb-2">Ticket Type</h4>
+          <p class="text-sm text-base-content/70 mb-3">
+            Add an offer for each ticket type (e.g. "General admission", "Reserved seating", "VIP Package", etc.).
+          </p>
+
+          <!-- Currency -->
+          <div class="form-control mb-4">
+            <label class="label">
+              <span class="label-text font-medium">Currency</span>
+            </label>
+            <select id="event-currency" class="select select-bordered w-full" onchange="generateSchema()">
+              <option value="">Currency</option>
+              <option value="VND">VND - Vietnamese Dong</option>
+              <option value="USD">USD - US Dollar</option>
+              <option value="EUR">EUR - Euro</option>
+              <option value="GBP">GBP - British Pound</option>
+            </select>
+          </div>
+
+          <!-- Tickets list -->
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="font-medium">Danh sách ticket</h4>
+            <button
+              type="button"
+              onclick="addTicket()"
+              class="btn btn-primary btn-sm"
+            >
+              <.icon name="hero-plus" /> Thêm Ticket
+            </button>
+          </div>
+
+          <div id="tickets-container" class="space-y-4">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preview Generated Schema Section -->
+  <div id="schema-preview-section" class="card w-full bg-base-100 shadow-lg shadow-gray-300 mt-6" style="display: block;">
+    <div class="card-body">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-xl font-semibold">Preview Generated Schema</h3>
+        <button
+          type="button"
+          onclick="copySchemaToClipboard()"
+          class="btn btn-primary btn-sm"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
+          </svg>
+          Copy
+        </button>
+      </div>
+      <pre id="schema-preview-container" class="bg-gray-900 text-green-400 rounded-lg p-4 overflow-x-auto" phx-update="ignore"><code id="schema-preview" class="language-json"></code></pre>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>

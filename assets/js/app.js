@@ -24,6 +24,8 @@ import { Socket } from "phoenix"
 import { LiveSocket } from "phoenix_live_view"
 import { hooks as colocatedHooks } from "phoenix-colocated/levanngoc"
 import topbar from "../vendor/topbar"
+// Import schema generator utilities
+import "./schema_generator.js"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 
@@ -87,6 +89,36 @@ const ContentPreview = {
   }
 }
 
+// Link Builder Hook - Auto-build link HTML
+const LinkBuilder = {
+  mounted() {
+    this.urlInput = this.el.querySelector('[data-link-url]')
+    this.anchorInput = this.el.querySelector('[data-link-anchor]')
+    this.outputInput = this.el.querySelector('[data-link-output]')
+    this.testSection = this.el.querySelector('[data-link-test]')
+    this.testAnchor = this.el.querySelector('[data-link-anchor-test]')
+
+    const buildLink = () => {
+      const url = this.urlInput.value
+      const anchor = this.anchorInput.value
+
+      if (url && anchor) {
+        const linkCode = '<a href="' + url + '">' + anchor + '</a>'
+        this.outputInput.value = linkCode
+        this.testSection.style.display = 'block'
+        this.testAnchor.href = url
+        this.testAnchor.textContent = anchor
+      } else {
+        this.outputInput.value = ''
+        this.testSection.style.display = 'none'
+      }
+    }
+
+    this.urlInput.addEventListener('input', buildLink)
+    this.anchorInput.addEventListener('input', buildLink)
+  }
+}
+
 // Popup Tracker Hook - Manages anonymous session ID in sessionStorage
 const PopupTracker = {
   mounted() {
@@ -120,7 +152,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
       popup_anonymous_id: anonymousId
     }
   },
-  hooks: { ...colocatedHooks, OTPInput, PopupTracker, ContentPreview },
+  hooks: { ...colocatedHooks, OTPInput, PopupTracker, ContentPreview, LinkBuilder },
 })
 
 // Show progress bar on live navigation and form submits
