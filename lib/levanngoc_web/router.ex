@@ -33,7 +33,9 @@ defmodule LevanngocWeb.Router do
       live "/keyword_grouping", KeywordGroupingLive.Index, :index
       live "/check_duplicate_content", CheckDuplicateContentLive.Index, :index
       live "/schema_generator", SchemaGeneratorLive.Index, :index
+      live "/gmail_alias", GmailAliasLive.Index, :index
       live "/spinner_tool", SpinnerToolLive.Index, :index
+      live "/backlink_checker", BacklinkCheckerLive.Index, :index
       live "/privacy-policy", PolicyLive.PrivacyPolicy, :index
       live "/terms-of-service", PolicyLive.TermsOfService, :index
       live "/refund-policy", PolicyLive.RefundPolicy, :index
