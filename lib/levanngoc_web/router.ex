@@ -36,6 +36,8 @@ defmodule LevanngocWeb.Router do
       live "/gmail_alias", GmailAliasLive.Index, :index
       live "/spinner_tool", SpinnerToolLive.Index, :index
       live "/backlink_checker", BacklinkCheckerLive.Index, :index
+      live "/geo_tag", SeoImageLive.GeoTag, :index
+      live "/image_compression", SeoImageLive.ImageCompression, :index
       live "/privacy-policy", PolicyLive.PrivacyPolicy, :index
       live "/terms-of-service", PolicyLive.TermsOfService, :index
       live "/refund-policy", PolicyLive.RefundPolicy, :index

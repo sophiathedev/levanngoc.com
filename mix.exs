@@ -80,7 +80,8 @@ defmodule Levanngoc.MixProject do
       {:google_api_drive, "~> 0.32.0"},
       {:google_api_sheets, "~> 0.35.0"},
       {:cachex, "~> 4.0"},
-      {:floki, "~> 0.38.0"}
+      {:floki, "~> 0.38.0"},
+      {:mogrify, "~> 0.9.3"}
     ]
   end
 
