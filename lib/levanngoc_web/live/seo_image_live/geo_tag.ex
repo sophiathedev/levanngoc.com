@@ -184,6 +184,27 @@ defmodule LevanngocWeb.SeoImageLive.GeoTag do
     end
   end
 
+  @impl true
+  def handle_event("clear", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:uploaded_image, nil)
+     |> assign(:has_non_jpeg, false)
+     |> assign(:latitude, "")
+     |> assign(:longitude, "")
+     |> assign(:title, "")
+     |> assign(:subject, "")
+     |> assign(:keywords, "")
+     |> assign(:secondary_keywords, "")
+     |> assign(:comments, "")
+     |> assign(:author, "")
+     |> assign(:copyright, "")
+     |> assign(:date_taken, Date.to_string(Date.utc_today()))
+     |> assign(:camera_manufacturer, "")
+     |> assign(:camera_model, "")
+     |> assign(:application_name, "")}
+  end
+
   defp determine_filename(original_filename, params) do
     ext = Path.extname(original_filename)
     basename = Path.basename(original_filename, ext)
@@ -393,27 +414,6 @@ defmodule LevanngocWeb.SeoImageLive.GeoTag do
 
         System.cmd(executable, args, stderr_to_stdout: true)
     end
-  end
-
-  @impl true
-  def handle_event("clear", _params, socket) do
-    {:noreply,
-     socket
-     |> assign(:uploaded_image, nil)
-     |> assign(:has_non_jpeg, false)
-     |> assign(:latitude, "")
-     |> assign(:longitude, "")
-     |> assign(:title, "")
-     |> assign(:subject, "")
-     |> assign(:keywords, "")
-     |> assign(:secondary_keywords, "")
-     |> assign(:comments, "")
-     |> assign(:author, "")
-     |> assign(:copyright, "")
-     |> assign(:date_taken, Date.to_string(Date.utc_today()))
-     |> assign(:camera_manufacturer, "")
-     |> assign(:camera_model, "")
-     |> assign(:application_name, "")}
   end
 
   defp error_to_string(:too_large), do: "File quá lớn"
