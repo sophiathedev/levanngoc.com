@@ -224,109 +224,143 @@ defmodule LevanngocWeb.FreeToolsLive.RobotsGenerator do
   def render(assigns) do
     ~H"""
     <div class="w-full h-full px-4 flex flex-col">
-          <h1 class="text-3xl font-bold mb-6">Tạo File Robots.txt</h1>
+      <h1 class="text-3xl font-bold mb-6">Tạo File Robots.txt</h1>
 
-          <form phx-change="validate" phx-submit="generate" class="flex flex-col gap-6">
-
-            <!-- Default Robot -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-              <label class="font-bold">Mặc định - Tất cả Robots:</label>
-              <div class="md:col-span-2">
-                <select name="default_robot" class="select select-bordered w-full max-w-xs">
-                  <option value="Allowed" selected={@default_robot == "Allowed"}>Cho phép (Allowed)</option>
-                  <option value="Refused" selected={@default_robot == "Refused"}>Từ chối (Refused)</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Crawl Delay -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-              <label class="font-bold">Độ trễ thu thập (Crawl-Delay):</label>
-              <div class="md:col-span-2">
-                <select name="crawl_delay" class="select select-bordered w-full">
-                  <option value="Default - No Delay" selected={@crawl_delay == "Default - No Delay"}>Mặc định - Không có độ trễ</option>
-                  <option value="5 Seconds" selected={@crawl_delay == "5 Seconds"}>5 Giây</option>
-                  <option value="10 Seconds" selected={@crawl_delay == "10 Seconds"}>10 Giây</option>
-                  <option value="20 Seconds" selected={@crawl_delay == "20 Seconds"}>20 Giây</option>
-                  <option value="60 Seconds" selected={@crawl_delay == "60 Seconds"}>60 Giây</option>
-                  <option value="120 Seconds" selected={@crawl_delay == "120 Seconds"}>120 Giây</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Sitemap -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-              <label class="font-bold">Sitemap: <span class="font-normal text-sm text-base-content/70">(để trống nếu bạn không có)</span></label>
-              <div class="md:col-span-2">
-                <input type="text" name="sitemap" value={@sitemap} placeholder="http://www.example.com/sitemap.xml" class="input input-bordered w-full" />
-              </div>
-            </div>
-
-            <!-- Search Robots -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-              <label class="font-bold pt-3">Search Robots (Các Robot tìm kiếm):</label>
-              <div class="md:col-span-2 space-y-3">
-                <%= for robot <- @robots_list do %>
-                  <div class="grid grid-cols-2 gap-4 items-center">
-                    <span class="text-sm">{robot}</span>
-                    <select name={"robot_" <> robot} class="select select-bordered select-sm w-full">
-                      <option value="Same as Default" selected={@search_robots[robot] == "Same as Default"}>Giống mặc định</option>
-                      <option value="Allowed" selected={@search_robots[robot] == "Allowed"}>Cho phép (Allowed)</option>
-                      <option value="Refused" selected={@search_robots[robot] == "Refused"}>Từ chối (Refused)</option>
-                    </select>
-                  </div>
-                <% end %>
-              </div>
-            </div>
-
-            <!-- Restricted Directories -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-              <label class="font-bold pt-3">Thư mục hạn chế (Restricted Directories):</label>
-              <div class="md:col-span-2">
-                 <p class="text-sm italic mb-2 text-base-content/70">Đường dẫn tính từ thư mục gốc và phải có dấu gạch chéo "/" ở cuối (ví dụ: /admin/) (mỗi thư mục trên một dòng)</p>
-                 <textarea name="restricted_directories" class="textarea textarea-bordered w-full h-40 font-mono" placeholder="/cgi-bin/"><%= @restricted_directories %></textarea>
-              </div>
-            </div>
-
-            <!-- Buttons -->
-            <div class="flex flex-wrap gap-2 mt-4 justify-end">
-              <button type="button" phx-click="generate" class="btn btn-primary text-white">Tạo robots.txt</button>
-              <button type="button" phx-click="download" class="btn btn-error text-white">Tạo và Tải xuống robots.txt</button>
-              <button type="button" phx-click="clear" class="btn btn-info text-white">Làm mới (Clear)</button>
-            </div>
-
-          </form>
-
-          <%= if @generated_content do %>
-            <div class="mt-8">
-              <h3 class="font-bold text-lg mb-2">Nội dung robots.txt được tạo:</h3>
-              <div class="mockup-code bg-black relative group">
-                <button
-                  type="button"
-                  class="bg-transparent absolute top-2 right-2 text-primary-content opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 cursor-pointer px-2.5 py-1"
-                  onclick="copyToClipboard('generated-robots-txt', this)"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="h-5 w-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
+      <form phx-change="validate" phx-submit="generate" class="flex flex-col gap-6">
+        
+    <!-- Default Robot -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+          <label class="font-bold">Mặc định - Tất cả Robots:</label>
+          <div class="md:col-span-2">
+            <select name="default_robot" class="select select-bordered w-full max-w-xs">
+              <option value="Allowed" selected={@default_robot == "Allowed"}>
+                Cho phép (Allowed)
+              </option>
+              <option value="Refused" selected={@default_robot == "Refused"}>
+                Từ chối (Refused)
+              </option>
+            </select>
+          </div>
+        </div>
+        
+    <!-- Crawl Delay -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+          <label class="font-bold">Độ trễ thu thập (Crawl-Delay):</label>
+          <div class="md:col-span-2">
+            <select name="crawl_delay" class="select select-bordered w-full">
+              <option value="Default - No Delay" selected={@crawl_delay == "Default - No Delay"}>
+                Mặc định - Không có độ trễ
+              </option>
+              <option value="5 Seconds" selected={@crawl_delay == "5 Seconds"}>5 Giây</option>
+              <option value="10 Seconds" selected={@crawl_delay == "10 Seconds"}>10 Giây</option>
+              <option value="20 Seconds" selected={@crawl_delay == "20 Seconds"}>20 Giây</option>
+              <option value="60 Seconds" selected={@crawl_delay == "60 Seconds"}>60 Giây</option>
+              <option value="120 Seconds" selected={@crawl_delay == "120 Seconds"}>120 Giây</option>
+            </select>
+          </div>
+        </div>
+        
+    <!-- Sitemap -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+          <label class="font-bold">
+            Sitemap:
+            <span class="font-normal text-sm text-base-content/70">(để trống nếu bạn không có)</span>
+          </label>
+          <div class="md:col-span-2">
+            <input
+              type="text"
+              name="sitemap"
+              value={@sitemap}
+              placeholder="http://www.example.com/sitemap.xml"
+              class="input input-bordered w-full"
+            />
+          </div>
+        </div>
+        
+    <!-- Search Robots -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+          <label class="font-bold pt-3">Search Robots (Các Robot tìm kiếm):</label>
+          <div class="md:col-span-2 space-y-3">
+            <%= for robot <- @robots_list do %>
+              <div class="grid grid-cols-2 gap-4 items-center">
+                <span class="text-sm">{robot}</span>
+                <select name={"robot_" <> robot} class="select select-bordered select-sm w-full">
+                  <option
+                    value="Same as Default"
+                    selected={@search_robots[robot] == "Same as Default"}
                   >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                    />
-                  </svg>
-                  Sao chép
-                </button>
-                <pre class="px-4 before:!content-none" data-prefix="" id="generated-robots-txt"><code><%= @generated_content %></code></pre>
+                    Giống mặc định
+                  </option>
+                  <option value="Allowed" selected={@search_robots[robot] == "Allowed"}>
+                    Cho phép (Allowed)
+                  </option>
+                  <option value="Refused" selected={@search_robots[robot] == "Refused"}>
+                    Từ chối (Refused)
+                  </option>
+                </select>
               </div>
-            </div>
-          <% end %>
+            <% end %>
+          </div>
+        </div>
+        
+    <!-- Restricted Directories -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+          <label class="font-bold pt-3">Thư mục hạn chế (Restricted Directories):</label>
+          <div class="md:col-span-2">
+            <p class="text-sm italic mb-2 text-base-content/70">
+              Đường dẫn tính từ thư mục gốc và phải có dấu gạch chéo "/" ở cuối (ví dụ: /admin/) (mỗi thư mục trên một dòng)
+            </p>
+            <textarea
+              name="restricted_directories"
+              class="textarea textarea-bordered w-full h-40 font-mono"
+              placeholder="/cgi-bin/"
+            ><%= @restricted_directories %></textarea>
+          </div>
+        </div>
+        
+    <!-- Buttons -->
+        <div class="flex flex-wrap gap-2 mt-4 justify-end">
+          <button type="button" phx-click="generate" class="btn btn-primary text-white">
+            Tạo robots.txt
+          </button>
+          <button type="button" phx-click="download" class="btn btn-error text-white">
+            Tạo và Tải xuống robots.txt
+          </button>
+          <button type="button" phx-click="clear" class="btn btn-info text-white">
+            Làm mới (Clear)
+          </button>
+        </div>
+      </form>
 
+      <%= if @generated_content do %>
+        <div class="mt-8">
+          <h3 class="font-bold text-lg mb-2">Nội dung robots.txt được tạo:</h3>
+          <div class="mockup-code bg-black relative group">
+            <button
+              type="button"
+              class="bg-transparent absolute top-2 right-2 text-primary-content opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 cursor-pointer px-2.5 py-1"
+              onclick="copyToClipboard('generated-robots-txt', this)"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                />
+              </svg>
+              Sao chép
+            </button>
+            <pre class="px-4 before:!content-none" data-prefix="" id="generated-robots-txt"><code><%= @generated_content %></code></pre>
+          </div>
+        </div>
+      <% end %>
     </div>
     <script>
       function copyToClipboard(elementId, btnElement) {
