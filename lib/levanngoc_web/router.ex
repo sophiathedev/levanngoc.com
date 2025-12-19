@@ -27,19 +27,19 @@ defmodule LevanngocWeb.Router do
         {LevanngocWeb.PopupHook, :default}
       ] do
       live "/", HomeLive.Index, :index
-      live "/check_url_index", CheckUrlIndexLive.Index, :index
-      live "/check_all_in_title", CheckAllInTitleLive.Index, :index
-      live "/check_keyword_ranking", CheckKeywordRankingLive.Index, :index
-      live "/keyword_grouping", KeywordGroupingLive.Index, :index
-      live "/check_duplicate_content", CheckDuplicateContentLive.Index, :index
-      live "/schema_generator", SchemaGeneratorLive.Index, :index
-      live "/gmail_alias", FreeToolsLive.GmailAlias, :index
-      live "/spinner_tool", FreeToolsLive.SpinnerTool, :index
-      live "/backlink_checker", BacklinkCheckerLive.Index, :index
-      live "/delete_vietnamese_symbol", FreeToolsLive.DeleteVietnameseSymbol, :index
-      live "/convert_upcase_downcase", FreeToolsLive.ConvertUpcaseDowncase, :index
-      live "/geo_tag", SeoImageLive.GeoTag, :index
-      live "/image_compression", SeoImageLive.ImageCompression, :index
+      live "/check-url-index", CheckUrlIndexLive.Index, :index
+      live "/check-all-in-title", CheckAllInTitleLive.Index, :index
+      live "/check-keyword-ranking", CheckKeywordRankingLive.Index, :index
+      live "/keyword-grouping", KeywordGroupingLive.Index, :index
+      live "/check-duplicate-content", CheckDuplicateContentLive.Index, :index
+      live "/schema-generator", SchemaGeneratorLive.Index, :index
+      live "/gmail-alias", FreeToolsLive.GmailAlias, :index
+      live "/spinner-tool", FreeToolsLive.SpinnerTool, :index
+      live "/backlink-checker", BacklinkCheckerLive.Index, :index
+      live "/delete-vietnamese-symbol", FreeToolsLive.DeleteVietnameseSymbol, :index
+      live "/convert-upcase-downcase", FreeToolsLive.ConvertUpcaseDowncase, :index
+      live "/geo-tag", SeoImageLive.GeoTag, :index
+      live "/image-compression", SeoImageLive.ImageCompression, :index
       live "/robots-generator", FreeToolsLive.RobotsGenerator, :index
       live "/privacy-policy", PolicyLive.PrivacyPolicy, :index
       live "/terms-of-service", PolicyLive.TermsOfService, :index
