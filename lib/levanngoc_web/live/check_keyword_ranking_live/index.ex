@@ -1001,7 +1001,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
             <% end %>
           </div>
         </div>
-
+        
     <!-- Second row - Two cards in separate columns -->
         <div class="card !bg-white shadow-lg border border-base-300 overflow-hidden">
           <div class="card-body p-6">
@@ -1528,8 +1528,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
                           >
                             <%= cond do %>
                               <% @is_exporting_sheets -> %>
-                                <span class="loading loading-spinner loading-sm"></span>
-                                Đang xuất...
+                                <span class="loading loading-spinner loading-sm"></span> Đang xuất...
                               <% Map.has_key?(@exported_sheets_urls, "ranked") -> %>
                                 <svg
                                   xmlns="http://www.w3.org/2000/svg"
@@ -1612,8 +1611,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
                           >
                             <%= cond do %>
                               <% @is_exporting_sheets -> %>
-                                <span class="loading loading-spinner loading-sm"></span>
-                                Đang xuất...
+                                <span class="loading loading-spinner loading-sm"></span> Đang xuất...
                               <% Map.has_key?(@exported_sheets_urls, "not_ranked") -> %>
                                 <svg
                                   xmlns="http://www.w3.org/2000/svg"
@@ -1685,8 +1683,7 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
                         >
                           <%= cond do %>
                             <% @is_exporting_sheets -> %>
-                              <span class="loading loading-spinner loading-sm"></span>
-                              Đang xuất...
+                              <span class="loading loading-spinner loading-sm"></span> Đang xuất...
                             <% Map.has_key?(@exported_sheets_urls, "all") -> %>
                               <svg
                                 xmlns="http://www.w3.org/2000/svg"

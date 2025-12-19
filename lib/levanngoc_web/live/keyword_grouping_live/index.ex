@@ -905,8 +905,7 @@ defmodule LevanngocWeb.KeywordGroupingLive.Index do
                     <button phx-click="export_google_sheets" disabled={@is_exporting_sheets}>
                       <%= cond do %>
                         <% @is_exporting_sheets -> %>
-                          <span class="loading loading-spinner loading-sm"></span>
-                          Đang xuất...
+                          <span class="loading loading-spinner loading-sm"></span> Đang xuất...
                         <% @exported_sheets_url -> %>
                           <svg
                             xmlns="http://www.w3.org/2000/svg"

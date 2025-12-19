@@ -26,15 +26,24 @@ defmodule LevanngocWeb.HomeLive.Index do
               </.link>
             </div>
             <div class="flex gap-4 justify-center mt-4 text-sm">
-              <.link navigate={~p"/privacy-policy"} class="link link-hover text-primary underline-offset-1">
+              <.link
+                navigate={~p"/privacy-policy"}
+                class="link link-hover text-primary underline-offset-1"
+              >
                 Chính sách bảo mật
               </.link>
               <span class="text-base-content/50">•</span>
-              <.link navigate={~p"/refund-policy"} class="link link-hover text-primary underline-offset-1">
+              <.link
+                navigate={~p"/refund-policy"}
+                class="link link-hover text-primary underline-offset-1"
+              >
                 Chính sách hoàn tiền
               </.link>
               <span class="text-base-content/50">•</span>
-              <.link navigate={~p"/terms-of-service"} class="link link-hover text-primary underline-offset-1">
+              <.link
+                navigate={~p"/terms-of-service"}
+                class="link link-hover text-primary underline-offset-1"
+              >
                 Điều khoản sử dụng
               </.link>
             </div>

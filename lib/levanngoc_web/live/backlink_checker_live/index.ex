@@ -391,8 +391,8 @@ defmodule LevanngocWeb.BacklinkCheckerLive.Index do
                   <option value="16" selected={@thread_count == 16}>Rất nhanh (16 luồng)</option>
                 </select>
               </div>
-
-              <!-- Domain column -->
+              
+    <!-- Domain column -->
               <div class="form-control">
                 <label class="label">
                   <span class="label-text">Domain cần kiểm tra</span>
@@ -408,8 +408,8 @@ defmodule LevanngocWeb.BacklinkCheckerLive.Index do
                 />
               </div>
             </div>
-
-            <!-- Second row: URL list textarea -->
+            
+    <!-- Second row: URL list textarea -->
             <div class="form-control flex-1 flex flex-col mb-4">
               <label class="label">
                 <span class="label-text">Danh sách URL (mỗi URL một dòng)</span>
@@ -422,8 +422,8 @@ defmodule LevanngocWeb.BacklinkCheckerLive.Index do
                 disabled={@is_processing}
               >{@url_list}</textarea>
             </div>
-
-            <!-- Third row: Check button (right-aligned) -->
+            
+    <!-- Third row: Check button (right-aligned) -->
             <div class="flex justify-end">
               <button
                 type="submit"
@@ -476,22 +476,22 @@ defmodule LevanngocWeb.BacklinkCheckerLive.Index do
                   <th class="border-r border-base-300 font-bold text-center w-20">STT</th>
                   <th class="border-r border-base-300 font-bold min-w-[300px]">URL Kiểm tra</th>
                   <%= for i <- 1..@max_anchor_count do %>
-                    <th class="border-r border-base-300 font-bold min-w-[200px]">Anchor Text <%= i %></th>
+                    <th class="border-r border-base-300 font-bold min-w-[200px]">Anchor Text {i}</th>
                   <% end %>
                 </tr>
               </thead>
               <tbody>
                 <%= for result <- @results do %>
                   <tr class="hover">
-                    <td class="border-r border-base-300 text-center font-medium"><%= result.stt %></td>
+                    <td class="border-r border-base-300 text-center font-medium">{result.stt}</td>
                     <td class="border-r border-base-300">
                       <div class="tooltip tooltip-right" data-tip={result.url}>
-                        <div class="truncate max-w-[400px]"><%= result.url %></div>
+                        <div class="truncate max-w-[400px]">{result.url}</div>
                       </div>
                     </td>
                     <%= for i <- 1..@max_anchor_count do %>
                       <td class="border-r border-base-300">
-                        <%= Map.get(result, :"anchor_text_#{i}", "") %>
+                        {Map.get(result, :"anchor_text_#{i}", "")}
                       </td>
                     <% end %>
                   </tr>
@@ -519,7 +519,10 @@ defmodule LevanngocWeb.BacklinkCheckerLive.Index do
                 </svg>
                 Xuất kết quả
               </label>
-              <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52 mb-2">
+              <ul
+                tabindex="0"
+                class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52 mb-2"
+              >
                 <li>
                   <button type="button" phx-click="download" phx-value-format="xlsx">
                     <svg
@@ -567,8 +570,7 @@ defmodule LevanngocWeb.BacklinkCheckerLive.Index do
                   >
                     <%= cond do %>
                       <% @is_exporting_sheets -> %>
-                        <span class="loading loading-spinner loading-sm"></span>
-                        Đang xuất...
+                        <span class="loading loading-spinner loading-sm"></span> Đang xuất...
                       <% @exported_sheets_url -> %>
                         <svg
                           xmlns="http://www.w3.org/2000/svg"

@@ -24,7 +24,7 @@ defmodule LevanngocWeb.PolicyLive.PrivacyPolicy do
         <h1 class="text-4xl font-bold mb-6">Chính sách bảo mật</h1>
 
         <%= if @content && @content != "" do %>
-          <%= Phoenix.HTML.raw(@content) %>
+          {Phoenix.HTML.raw(@content)}
         <% else %>
           <div class="bg-base-200 p-6 rounded-lg">
             <p class="text-base-content/70">

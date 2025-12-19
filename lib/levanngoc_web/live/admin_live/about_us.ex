@@ -121,8 +121,8 @@ defmodule LevanngocWeb.AdminLive.AboutUs do
       <div class="flex-shrink-0 mb-6">
         <h1 class="text-3xl font-bold">Thông tin giới thiệu</h1>
       </div>
-
-      <!-- Policy Selector -->
+      
+    <!-- Policy Selector -->
       <form phx-change="change_policy">
         <div class="form-control w-full max-w-full">
           <label class="label px-0">
@@ -144,8 +144,8 @@ defmodule LevanngocWeb.AdminLive.AboutUs do
           </select>
         </div>
       </form>
-
-      <!-- Edit Form -->
+      
+    <!-- Edit Form -->
       <.form
         for={@form}
         id="about-us-form"
@@ -155,8 +155,8 @@ defmodule LevanngocWeb.AdminLive.AboutUs do
       >
         <!-- Hidden field to pass selected policy -->
         <input type="hidden" name="selected_policy" value={@selected_policy} />
-
-        <!-- Two Column Layout: Content Editor and Preview -->
+        
+    <!-- Two Column Layout: Content Editor and Preview -->
         <div class={[
           "flex-1 flex overflow-hidden -mx-4 px-4 transition-all duration-300",
           (@expanded_view && "gap-0") || "gap-4"
@@ -222,8 +222,8 @@ defmodule LevanngocWeb.AdminLive.AboutUs do
               ><%= @form[:content].value %></textarea>
             </div>
           </div>
-
-          <!-- Right Column: Preview -->
+          
+    <!-- Right Column: Preview -->
           <div class={[
             "flex flex-col transition-all duration-300 ease-in-out",
             @expanded_view == :preview && "flex-1",

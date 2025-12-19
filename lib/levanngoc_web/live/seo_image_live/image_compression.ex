@@ -6,7 +6,12 @@ defmodule LevanngocWeb.SeoImageLive.ImageCompression do
     {:ok,
      socket
      |> assign(:page_title, "Nén Hình ảnh")
-     |> allow_upload(:images, accept: ~w(.jpg .jpeg), max_entries: 10, max_file_size: 10_000_000, auto_upload: true)
+     |> allow_upload(:images,
+       accept: ~w(.jpg .jpeg),
+       max_entries: 10,
+       max_file_size: 10_000_000,
+       auto_upload: true
+     )
      |> assign(:compression_mode, "standard")
      |> assign(:quality, 90)}
   end
@@ -181,7 +186,7 @@ defmodule LevanngocWeb.SeoImageLive.ImageCompression do
             <div class="card-body p-6">
               <h2 class="card-title text-base mb-4">Chất lượng ảnh</h2>
               <div class="flex items-center gap-4">
-                <span class="text-sm text-base-content/60 w-12"><%= @quality %>%</span>
+                <span class="text-sm text-base-content/60 w-12">{@quality}%</span>
                 <input
                   type="range"
                   min="0"
@@ -196,39 +201,80 @@ defmodule LevanngocWeb.SeoImageLive.ImageCompression do
         </div>
         <!-- Upload Section and File List -->
         <div class="flex flex-col gap-2">
-          <div class="relative w-full flex-1 p-10 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-base-300 rounded-lg hover:bg-base-200/20 transition-colors" phx-drop-target={@uploads.images.ref}>
-             <div class="bg-primary/10 text-primary px-4 py-2 rounded-lg font-medium text-sm mb-2">Tải lên</div>
-             <p class="text-sm text-base-content/60">Tối đa dung lượng ảnh là 10MB</p>
-             <p class="text-sm text-base-content/60">Hoặc kéo & thả file vào đây (Định dạng file: .JPG; .JPEG)</p>
-             <.live_file_input upload={@uploads.images} class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+          <div
+            class="relative w-full flex-1 p-10 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-base-300 rounded-lg hover:bg-base-200/20 transition-colors"
+            phx-drop-target={@uploads.images.ref}
+          >
+            <div class="bg-primary/10 text-primary px-4 py-2 rounded-lg font-medium text-sm mb-2">
+              Tải lên
+            </div>
+            <p class="text-sm text-base-content/60">Tối đa dung lượng ảnh là 10MB</p>
+            <p class="text-sm text-base-content/60">
+              Hoặc kéo & thả file vào đây (Định dạng file: .JPG; .JPEG)
+            </p>
+            <.live_file_input
+              upload={@uploads.images}
+              class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
           </div>
-
-          <!-- File List -->
+          
+    <!-- File List -->
           <%= if @uploads.images.entries != [] do %>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-2">
               <%= for entry <- @uploads.images.entries do %>
                 <div class="flex items-center justify-between p-3 bg-base-100 border border-base-200 rounded-lg">
                   <div class="flex items-center gap-3 overflow-hidden">
                     <div class="w-10 h-10 rounded-lg bg-base-200 flex-shrink-0 flex items-center justify-center text-base-content/50">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke-width="1.5"
+                        stroke="currentColor"
+                        class="w-6 h-6"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
+                        />
                       </svg>
                     </div>
                     <div class="min-w-0">
-                      <p class="font-medium text-sm truncate" title={entry.client_name}><%= entry.client_name %></p>
+                      <p class="font-medium text-sm truncate" title={entry.client_name}>
+                        {entry.client_name}
+                      </p>
                       <p class="text-xs text-base-content/60">
-                        <%= Float.round(entry.client_size / 1024 / 1024, 2) %> MB
+                        {Float.round(entry.client_size / 1024 / 1024, 2)} MB
                         <%= if entry.progress < 100 do %>
-                          <span class="text-primary ml-1">(<%= entry.progress %>%)</span>
+                          <span class="text-primary ml-1">({entry.progress}%)</span>
                         <% end %>
                       </p>
                       <%= for err <- upload_errors(@uploads.images, entry) do %>
-                        <p class="text-xs text-error"><%= error_to_string(err) %></p>
+                        <p class="text-xs text-error">{error_to_string(err)}</p>
                       <% end %>
                     </div>
                   </div>
-                  <button type="button" phx-click="cancel-upload" phx-value-ref={entry.ref} class="btn btn-ghost btn-sm btn-circle text-error flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                  <button
+                    type="button"
+                    phx-click="cancel-upload"
+                    phx-value-ref={entry.ref}
+                    class="btn btn-ghost btn-sm btn-circle text-error flex-shrink-0"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
                   </button>
                 </div>
               <% end %>
@@ -242,7 +288,10 @@ defmodule LevanngocWeb.SeoImageLive.ImageCompression do
             phx-click="compress_images"
             class="btn btn-primary min-w-[200px] text-white border-none disabled:bg-base-300 disabled:text-base-content/50"
             phx-disable-with="Đang xử lý..."
-            disabled={@uploads.images.entries == [] or Enum.any?(@uploads.images.entries, fn entry -> !entry.done? end)}
+            disabled={
+              @uploads.images.entries == [] or
+                Enum.any?(@uploads.images.entries, fn entry -> !entry.done? end)
+            }
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"

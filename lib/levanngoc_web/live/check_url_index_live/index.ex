@@ -800,8 +800,7 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
                       >
                         <%= cond do %>
                           <% @is_exporting_sheets -> %>
-                            <span class="loading loading-spinner loading-sm"></span>
-                            Đang xuất...
+                            <span class="loading loading-spinner loading-sm"></span> Đang xuất...
                           <% Map.has_key?(@exported_sheets_urls, "all") -> %>
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
@@ -872,8 +871,7 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
                       >
                         <%= cond do %>
                           <% @is_exporting_sheets -> %>
-                            <span class="loading loading-spinner loading-sm"></span>
-                            Đang xuất...
+                            <span class="loading loading-spinner loading-sm"></span> Đang xuất...
                           <% Map.has_key?(@exported_sheets_urls, "indexed") -> %>
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
@@ -948,8 +946,7 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
                       >
                         <%= cond do %>
                           <% @is_exporting_sheets -> %>
-                            <span class="loading loading-spinner loading-sm"></span>
-                            Đang xuất...
+                            <span class="loading loading-spinner loading-sm"></span> Đang xuất...
                           <% Map.has_key?(@exported_sheets_urls, "not_indexed") -> %>
                             <svg
                               xmlns="http://www.w3.org/2000/svg"

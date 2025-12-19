@@ -33,11 +33,14 @@ defmodule LevanngocWeb.Router do
       live "/keyword_grouping", KeywordGroupingLive.Index, :index
       live "/check_duplicate_content", CheckDuplicateContentLive.Index, :index
       live "/schema_generator", SchemaGeneratorLive.Index, :index
-      live "/gmail_alias", GmailAliasLive.Index, :index
-      live "/spinner_tool", SpinnerToolLive.Index, :index
+      live "/gmail_alias", FreeToolsLive.GmailAlias, :index
+      live "/spinner_tool", FreeToolsLive.SpinnerTool, :index
       live "/backlink_checker", BacklinkCheckerLive.Index, :index
+      live "/delete_vietnamese_symbol", FreeToolsLive.DeleteVietnameseSymbol, :index
+      live "/convert_upcase_downcase", FreeToolsLive.ConvertUpcaseDowncase, :index
       live "/geo_tag", SeoImageLive.GeoTag, :index
       live "/image_compression", SeoImageLive.ImageCompression, :index
+      live "/robots-generator", FreeToolsLive.RobotsGenerator, :index
       live "/privacy-policy", PolicyLive.PrivacyPolicy, :index
       live "/terms-of-service", PolicyLive.TermsOfService, :index
       live "/refund-policy", PolicyLive.RefundPolicy, :index

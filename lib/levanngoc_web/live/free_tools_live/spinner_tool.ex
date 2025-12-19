@@ -1,4 +1,4 @@
-defmodule LevanngocWeb.SpinnerToolLive.Index do
+defmodule LevanngocWeb.FreeToolsLive.SpinnerTool do
   use LevanngocWeb, :live_view
 
   alias Levanngoc.External.Spintax
@@ -42,7 +42,6 @@ defmodule LevanngocWeb.SpinnerToolLive.Index do
     result = Spintax.unspin(socket.assigns.spin_content)
     {:noreply, assign(socket, :result_text, result)}
   end
-
 
   @impl true
   def render(assigns) do
@@ -106,7 +105,6 @@ defmodule LevanngocWeb.SpinnerToolLive.Index do
         <div class="modal-backdrop backdrop-blur-sm bg-black/30" phx-click="close_modal"></div>
       </div>
     <% end %>
-
     """
   end
 end

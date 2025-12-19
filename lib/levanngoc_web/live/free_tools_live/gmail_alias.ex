@@ -1,4 +1,4 @@
-defmodule LevanngocWeb.GmailAliasLive.Index do
+defmodule LevanngocWeb.FreeToolsLive.GmailAlias do
   use LevanngocWeb, :live_view
 
   @impl true
@@ -163,8 +163,8 @@ defmodule LevanngocWeb.GmailAliasLive.Index do
                 required
               />
             </div>
-
-            <!-- Number of Aliases and Method on same row -->
+            
+    <!-- Number of Aliases and Method on same row -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div class="form-control w-full">
                 <label class="label">
@@ -197,8 +197,8 @@ defmodule LevanngocWeb.GmailAliasLive.Index do
                 </select>
               </div>
             </div>
-
-            <!-- Result Textarea -->
+            
+    <!-- Result Textarea -->
             <div class="form-control w-full mb-4 flex-1 flex flex-col">
               <label class="label">
                 <span class="label-text font-medium">Kết quả:</span>
@@ -209,8 +209,8 @@ defmodule LevanngocWeb.GmailAliasLive.Index do
                 id="alias-result"
               ><%= @generated_aliases %></textarea>
             </div>
-
-            <!-- Buttons -->
+            
+    <!-- Buttons -->
             <div class="flex gap-3 justify-end">
               <button
                 type="button"
@@ -219,8 +219,19 @@ defmodule LevanngocWeb.GmailAliasLive.Index do
                 disabled={@generated_aliases == ""}
                 onclick="exportToTxt()"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5 mr-2"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
                 </svg>
                 Xuất file .txt
               </button>
@@ -230,8 +241,19 @@ defmodule LevanngocWeb.GmailAliasLive.Index do
                 class="btn btn-primary"
                 disabled={@gmail_address == "" or @num_aliases == ""}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5 mr-2"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
                 </svg>
                 Tạo alias
               </button>
