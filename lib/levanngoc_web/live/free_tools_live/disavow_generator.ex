@@ -66,8 +66,8 @@ defmodule LevanngocWeb.FreeToolsLive.DisavowGenerator do
     ~H"""
     <div class="w-full h-full px-4 py-4 flex flex-col">
       <h1 class="text-3xl font-bold mb-6">Disavow Generator</h1>
-
-      <!-- Grid 2 columns full height -->
+      
+    <!-- Grid 2 columns full height -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
         <!-- Left Section: Input -->
         <div class="flex flex-col min-h-0">
@@ -80,8 +80,8 @@ defmodule LevanngocWeb.FreeToolsLive.DisavowGenerator do
             ><%= @input_text %></textarea>
           </form>
         </div>
-
-        <!-- Right Section: Result -->
+        
+    <!-- Right Section: Result -->
         <div class="flex flex-col min-h-0">
           <h2 class="text-2xl font-semibold mb-3">Result:</h2>
           <textarea
@@ -91,8 +91,8 @@ defmodule LevanngocWeb.FreeToolsLive.DisavowGenerator do
           ><%= @result_text %></textarea>
         </div>
       </div>
-
-      <!-- Buttons Row -->
+      
+    <!-- Buttons Row -->
       <div class="flex gap-3 mt-6 justify-end">
         <button
           type="button"

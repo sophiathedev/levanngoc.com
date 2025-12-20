@@ -223,7 +223,7 @@ defmodule LevanngocWeb.FreeToolsLive.ConvertUpcaseDowncase do
                 </div>
               </div>
             </div>
-
+            
     <!-- Input Textarea -->
             <div class="form-control w-full flex-1 flex flex-col">
               <label class="label">
@@ -237,7 +237,7 @@ defmodule LevanngocWeb.FreeToolsLive.ConvertUpcaseDowncase do
                 id="input-text"
               ><%= @input_text %></textarea>
             </div>
-
+            
     <!-- Output Textarea -->
             <div class="form-control w-full flex-1 flex flex-col">
               <label class="label">
@@ -249,7 +249,7 @@ defmodule LevanngocWeb.FreeToolsLive.ConvertUpcaseDowncase do
                 id="output-text"
               ><%= @output_text %></textarea>
             </div>
-
+            
     <!-- Statistics and Buttons -->
             <div class="flex gap-3 justify-between items-center">
               <!-- Statistics -->
@@ -271,7 +271,7 @@ defmodule LevanngocWeb.FreeToolsLive.ConvertUpcaseDowncase do
                   <span class="text-primary font-semibold">{@space_count}</span>
                 </div>
               </div>
-
+              
     <!-- Buttons -->
               <div class="flex gap-3">
                 <button

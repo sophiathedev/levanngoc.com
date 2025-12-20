@@ -67,8 +67,8 @@ defmodule LevanngocWeb.FreeToolsLive.ExtractDomain do
     ~H"""
     <div class="w-full h-full px-4 py-4 flex flex-col">
       <h1 class="text-3xl font-bold mb-6">Tách tên miền từ URL</h1>
-
-      <!-- Grid 2 columns full height -->
+      
+    <!-- Grid 2 columns full height -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
         <!-- Left Section: URLs Input -->
         <div class="flex flex-col min-h-0">
@@ -81,8 +81,8 @@ defmodule LevanngocWeb.FreeToolsLive.ExtractDomain do
             ><%= @input_urls %></textarea>
           </form>
         </div>
-
-        <!-- Right Section: Domains Output -->
+        
+    <!-- Right Section: Domains Output -->
         <div class="flex flex-col min-h-0">
           <h2 class="text-2xl font-semibold mb-3">Domains</h2>
           <textarea
@@ -92,8 +92,8 @@ defmodule LevanngocWeb.FreeToolsLive.ExtractDomain do
           ><%= @result_domains %></textarea>
         </div>
       </div>
-
-      <!-- Checkbox and Buttons -->
+      
+    <!-- Checkbox and Buttons -->
       <div class="mt-6 space-y-2 flex justify-between items-center">
         <label class="flex items-center gap-3 cursor-pointer">
           <input
@@ -107,21 +107,19 @@ defmodule LevanngocWeb.FreeToolsLive.ExtractDomain do
         </label>
 
         <div class="flex gap-2">
-
-
           <button
             type="button"
             phx-click="reset"
             class="btn btn-soft px-8"
           >
-          Reset
+            Reset
           </button>
           <button
             type="button"
             phx-click="extract"
             class="btn btn-primary text-white px-8"
           >
-          Tách domain
+            Tách domain
           </button>
         </div>
       </div>
