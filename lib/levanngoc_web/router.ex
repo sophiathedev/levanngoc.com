@@ -41,6 +41,8 @@ defmodule LevanngocWeb.Router do
       live "/geo-tag", SeoImageLive.GeoTag, :index
       live "/image-compression", SeoImageLive.ImageCompression, :index
       live "/robots-generator", FreeToolsLive.RobotsGenerator, :index
+      live "/disavow-generator", FreeToolsLive.DisavowGenerator, :index
+      live "/extract-domain", FreeToolsLive.ExtractDomain, :index
       live "/privacy-policy", PolicyLive.PrivacyPolicy, :index
       live "/terms-of-service", PolicyLive.TermsOfService, :index
       live "/refund-policy", PolicyLive.RefundPolicy, :index
