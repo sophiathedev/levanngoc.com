@@ -5,6 +5,7 @@ defmodule LevanngocWeb.FreeToolsLive.GmailAlias do
   def mount(_params, _session, socket) do
     {:ok,
      socket
+     |> assign(:page_title, "Gmail Alias")
      |> assign(:gmail_address, "")
      |> assign(:num_aliases, "100")
      |> assign(:alias_method, "plus")

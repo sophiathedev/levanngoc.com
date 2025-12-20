@@ -3,7 +3,7 @@ defmodule LevanngocWeb.HomeLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, socket}
+    {:ok, socket |> assign(:page_title, "Trang chủ")}
   end
 
   @impl true

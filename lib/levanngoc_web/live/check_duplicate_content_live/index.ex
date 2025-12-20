@@ -15,6 +15,7 @@ defmodule LevanngocWeb.CheckDuplicateContentLive.Index do
 
     {:ok,
      socket
+     |> assign(:page_title, "Kiểm tra trùng lặp nội dung")
      |> assign(:is_logged_in, is_logged_in)
      |> assign(:show_login_required_modal, !is_logged_in)
      |> assign(:is_processing, false)

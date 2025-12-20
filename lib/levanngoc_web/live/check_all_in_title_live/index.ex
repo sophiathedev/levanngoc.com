@@ -24,6 +24,7 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
 
     {:ok,
      socket
+     |> assign(:page_title, "Kiểm tra All In Title")
      |> assign(:is_logged_in, is_logged_in)
      |> assign(:show_login_required_modal, !is_logged_in)
      |> assign(:uploaded_files, [])

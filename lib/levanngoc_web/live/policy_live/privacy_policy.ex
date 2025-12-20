@@ -9,7 +9,7 @@ defmodule LevanngocWeb.PolicyLive.PrivacyPolicy do
     settings = get_settings()
     content = if settings, do: settings.privacy_policy, else: nil
 
-    {:ok, assign(socket, :content, content)}
+    {:ok, socket |> assign(:page_title, "Chính sách bảo mật") |> assign(:content, content)}
   end
 
   defp get_settings do

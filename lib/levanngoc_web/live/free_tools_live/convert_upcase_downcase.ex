@@ -5,6 +5,7 @@ defmodule LevanngocWeb.FreeToolsLive.ConvertUpcaseDowncase do
   def mount(_params, _session, socket) do
     {:ok,
      socket
+     |> assign(:page_title, "Chuyển đổi Hoa/Thường")
      |> assign(:input_text, "")
      |> assign(:output_text, "")
      |> assign(:convert_mode, "uppercase")

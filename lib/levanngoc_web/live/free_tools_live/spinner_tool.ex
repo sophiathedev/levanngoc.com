@@ -7,6 +7,7 @@ defmodule LevanngocWeb.FreeToolsLive.SpinnerTool do
   def mount(_params, _session, socket) do
     {:ok,
      socket
+     |> assign(:page_title, "Spinner Tool")
      |> assign(:spin_content, "")
      |> assign(:show_result_modal, false)
      |> assign(:result_text, "")}

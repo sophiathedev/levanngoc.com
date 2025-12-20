@@ -5,6 +5,7 @@ defmodule LevanngocWeb.BacklinkCheckerLive.Index do
   def mount(_params, _session, socket) do
     {:ok,
      socket
+     |> assign(:page_title, "Kiểm tra Backlink")
      |> assign(:thread_count, 4)
      |> assign(:domain, "")
      |> assign(:url_list, "")

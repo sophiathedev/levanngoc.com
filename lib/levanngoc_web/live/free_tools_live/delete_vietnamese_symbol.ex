@@ -5,6 +5,7 @@ defmodule LevanngocWeb.FreeToolsLive.DeleteVietnameseSymbol do
   def mount(_params, _session, socket) do
     {:ok,
      socket
+     |> assign(:page_title, "Xóa dấu tiếng Việt")
      |> assign(:input_text, "")
      |> assign(:output_text, "")
      |> assign(:word_count, 0)

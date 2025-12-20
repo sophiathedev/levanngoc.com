@@ -5,7 +5,7 @@ defmodule LevanngocWeb.FreeToolsLive.DisavowGenerator do
   def mount(_params, _session, socket) do
     {:ok,
      socket
-     |> assign(:page_title, "Disavow Generator")
+     |> assign(:page_title, "Tạo file Disavow")
      |> assign(:input_text, "")
      |> assign(:result_text, "")}
   end

@@ -5,7 +5,7 @@ defmodule LevanngocWeb.FreeToolsLive.ExtractDomain do
   def mount(_params, _session, socket) do
     {:ok,
      socket
-     |> assign(:page_title, "Extract Domain from URLs")
+     |> assign(:page_title, "Tách tên miền từ URL")
      |> assign(:input_urls, "")
      |> assign(:result_domains, "")
      |> assign(:remove_duplicates, true)}

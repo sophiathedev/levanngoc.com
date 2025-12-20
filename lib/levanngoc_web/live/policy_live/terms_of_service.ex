@@ -9,7 +9,7 @@ defmodule LevanngocWeb.PolicyLive.TermsOfService do
     settings = get_settings()
     content = if settings, do: settings.terms_of_service, else: nil
 
-    {:ok, assign(socket, :content, content)}
+    {:ok, socket |> assign(:page_title, "Điều khoản sử dụng") |> assign(:content, content)}
   end
 
   defp get_settings do

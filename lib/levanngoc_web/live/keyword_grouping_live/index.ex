@@ -19,6 +19,7 @@ defmodule LevanngocWeb.KeywordGroupingLive.Index do
 
     {:ok,
      socket
+     |> assign(:page_title, "Gom nhóm từ khóa")
      |> assign(:is_logged_in, is_logged_in)
      |> assign(:show_login_required_modal, !is_logged_in)
      |> assign(:is_processing, false)

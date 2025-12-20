@@ -9,7 +9,7 @@ defmodule LevanngocWeb.PolicyLive.RefundPolicy do
     settings = get_settings()
     content = if settings, do: settings.refund_policy, else: nil
 
-    {:ok, assign(socket, :content, content)}
+    {:ok, socket |> assign(:page_title, "Chính sách hoàn tiền") |> assign(:content, content)}
   end
 
   defp get_settings do
