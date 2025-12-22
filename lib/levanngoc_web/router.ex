@@ -46,6 +46,7 @@ defmodule LevanngocWeb.Router do
       live "/privacy-policy", PolicyLive.PrivacyPolicy, :index
       live "/terms-of-service", PolicyLive.TermsOfService, :index
       live "/refund-policy", PolicyLive.RefundPolicy, :index
+      live "/redirect-checker", FreeToolsLive.RedirectChecker
     end
   end
 
