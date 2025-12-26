@@ -43,10 +43,11 @@ defmodule LevanngocWeb.Router do
       live "/robots-generator", FreeToolsLive.RobotsGenerator, :index
       live "/disavow-generator", FreeToolsLive.DisavowGenerator, :index
       live "/extract-domain", FreeToolsLive.ExtractDomain, :index
+      live "/redirect-checker", FreeToolsLive.RedirectChecker, :index
+      live "/check-keyword-cannibalization", CheckKeywordCannibalizationLive.Index, :index
       live "/privacy-policy", PolicyLive.PrivacyPolicy, :index
       live "/terms-of-service", PolicyLive.TermsOfService, :index
       live "/refund-policy", PolicyLive.RefundPolicy, :index
-      live "/redirect-checker", FreeToolsLive.RedirectChecker
     end
   end
 

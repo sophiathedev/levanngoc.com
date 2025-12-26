@@ -1,0 +1,944 @@
+<div class="w-full h-full px-4 flex flex-col">
+  <h1 class="text-3xl font-bold mb-6">Kiểm tra Ăn thịt từ khóa</h1>
+
+  <div class="card bg-base-100 shadow-xl mb-6 border border-base-300 flex-1">
+    <div class="card-body flex flex-col p-0">
+      <!-- Form Section (Outside Tabs) -->
+      <div class="p-4 border-b border-base-300">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Domain Input -->
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Domain/Website:</span>
+            </label>
+            <input
+              type="text"
+              placeholder="example.com"
+              class="input input-bordered w-full"
+              value={@domain_input}
+              phx-keyup="update_domain"
+              name="domain"
+              disabled={@checking}
+            />
+            <label class="label">
+              <span class="label-text-alt">Chỉ nhập domain, không cần http:// hoặc https://</span>
+            </label>
+          </div>
+          
+<!-- Result Limit Dropdown -->
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Số kết quả tối đa mỗi từ khóa:</span>
+            </label>
+            <details class="dropdown dropdown-bottom w-full">
+              <summary class={"btn btn-outline w-full justify-between #{if @checking, do: "btn-disabled"}"}>
+                <span>{@result_limit} kết quả</span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </summary>
+              <ul class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-full mt-1 z-10">
+                <li>
+                  <a phx-click="select_limit" phx-value-limit="20">20 kết quả</a>
+                </li>
+                <li>
+                  <a phx-click="select_limit" phx-value-limit="30">30 kết quả</a>
+                </li>
+                <li>
+                  <a phx-click="select_limit" phx-value-limit="40">40 kết quả</a>
+                </li>
+                <li>
+                  <a phx-click="select_limit" phx-value-limit="50">50 kết quả</a>
+                </li>
+              </ul>
+            </details>
+            <label class="label">
+              <span class="label-text-alt">Số lượng trang tối đa trả về cho mỗi từ khóa</span>
+            </label>
+          </div>
+        </div>
+        
+<!-- Error Message -->
+        <%= if @error_message do %>
+          <div class="alert alert-error mt-4">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="stroke-current shrink-0 h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <span>{@error_message}</span>
+          </div>
+        <% end %>
+      </div>
+      
+<!-- Tabs -->
+      <div role="tablist" class="tabs tabs-border mb-0">
+        <button
+          role="tab"
+          class={[
+            "tab",
+            (@is_edit_mode && "tab-active") || "opacity-60"
+          ]}
+          phx-click="switch_to_edit_mode"
+          disabled={@checking}
+        >
+          Chế độ chỉnh sửa
+        </button>
+        <button
+          role="tab"
+          class={[
+            "tab",
+            (!@is_edit_mode && "tab-active") || "opacity-60"
+          ]}
+          phx-click="switch_to_file_mode"
+          disabled={@checking}
+        >
+          Chế độ File
+        </button>
+      </div>
+
+      <form
+        phx-change="validate"
+        phx-submit="check_cannibalization"
+        class="flex flex-col flex-1 p-4 -mt-3"
+      >
+        <%= if @is_edit_mode do %>
+          <div class="form-control w-full flex flex-col flex-1">
+            <label class="label mb-2">
+              <span class="label-text">Nhập từ khóa (mỗi từ khóa một dòng)</span>
+            </label>
+            <textarea
+              class="w-full flex-1 textarea textarea-bordered rounded-lg"
+              placeholder="từ khóa seo&#10;keyword cannibalization&#10;seo tools"
+              phx-change="update_manual_keywords"
+              name="keywords"
+              disabled={@checking}
+            >{@manual_keywords}</textarea>
+          </div>
+        <% else %>
+          <div class="form-control w-full flex flex-col flex-1">
+            <label class="label mb-2">
+              <span class="label-text">Chọn file (xlsx, csv, txt)</span>
+            </label>
+
+            <div
+              class="flex items-center justify-center w-full flex-1"
+              phx-drop-target={@uploads.file.ref}
+            >
+              <label
+                for={@uploads.file.ref}
+                class={"flex flex-col items-center justify-center w-full h-full border-2 border-dashed rounded-lg cursor-pointer bg-base-50 hover:bg-base-200 border-base-300 relative #{if @checking, do: "opacity-50 pointer-events-none", else: ""}"}
+              >
+                <%= if @uploads.file.entries == [] do %>
+                  <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                    <svg
+                      class="w-8 h-8 mb-4 text-base-content/50"
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 20 16"
+                    >
+                      <path
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"
+                      />
+                    </svg>
+                    <p class="mb-2 text-sm text-base-content/70">
+                      <span class="font-semibold">Click để upload</span> hoặc kéo thả
+                    </p>
+                    <p class="text-xs text-base-content/50">XLSX, CSV, TXT (Max 32MB)</p>
+                  </div>
+                <% else %>
+                  <%= for entry <- @uploads.file.entries do %>
+                    <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        class="w-12 h-12 mb-4 text-success"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <p class="mb-2 text-lg font-semibold text-base-content">
+                        {entry.client_name}
+                      </p>
+                      <p class="text-sm text-base-content/70">
+                        <%= if entry.progress > 0 do %>
+                          - {entry.progress}%
+                        <% end %>
+                      </p>
+                      <p class="mt-4 text-xs text-base-content/50">
+                        Click hoặc kéo thả để thay thế file khác
+                      </p>
+                    </div>
+                  <% end %>
+                <% end %>
+                <.live_file_input upload={@uploads.file} class="hidden" disabled={@checking} />
+              </label>
+            </div>
+          </div>
+        <% end %>
+
+        <div class="mt-4 flex justify-end gap-3">
+          <button
+            type="submit"
+            class="btn btn-primary min-w-[160px]"
+            disabled={@domain_input == "" or @checking}
+          >
+            <%= if @checking do %>
+              <span class="loading loading-spinner loading-sm"></span> Đang kiểm tra...
+            <% else %>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5 mr-2"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+              Kiểm tra
+            <% end %>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+<!-- Results Modal -->
+  <%= if @show_result_modal && @cannibalization_results != [] do %>
+    <% selected_result =
+      Enum.at(@cannibalization_results, @selected_keyword_index) || hd(@cannibalization_results)
+
+    score = selected_result.score
+    circumference = selected_result.visualization.circumference
+    stroke_dashoffset = selected_result.visualization.stroke_dashoffset %>
+    <div class="modal modal-open backdrop-blur-sm bg-black/30">
+      <div class="modal-box w-[90vw] h-[90vh] max-w-none flex flex-col pt-12 pb-4 px-4">
+        <button
+          phx-click="close_result_modal"
+          class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2 z-10"
+        >
+          ✕
+        </button>
+        
+<!-- Scrollable Content Area -->
+        <div class="flex-1 overflow-y-auto overflow-x-hidden p-4 pt-8">
+          <h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-8 w-8"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+              />
+            </svg>
+            Báo cáo Keyword Cannibalization
+          </h2>
+          
+<!-- Overview Table -->
+          <div class="mb-6 overflow-x-auto">
+            <div class="card bg-base-200">
+              <div class="card-body p-4">
+                <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                    />
+                  </svg>
+                  Tổng quan tất cả từ khóa ({length(@cannibalization_results)} từ khóa)
+                </h3>
+                <table class="table table-zebra w-full">
+                  <thead>
+                    <tr>
+                      <th class="w-12">#</th>
+                      <th>Từ khóa</th>
+                      <th>Trạng thái</th>
+                      <th class="text-center">Điểm</th>
+                      <th class="text-center">Số URLs</th>
+                      <th class="text-center">Chi tiết</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <%= for {result, index} <- Enum.with_index(@cannibalization_results) do %>
+                      <tr class={if @selected_keyword_index == index, do: "active"}>
+                        <td class="font-bold">{index + 1}</td>
+                        <td>
+                          <div class="font-medium">{result.keyword}</div>
+                        </td>
+                        <td>
+                          <%= case result.status do %>
+                            <% :no_results -> %>
+                              <div class="badge badge-ghost">Không có kết quả</div>
+                            <% :safe -> %>
+                              <div class="badge badge-success">An toàn</div>
+                            <% :error -> %>
+                              <div class="badge badge-error">Lỗi</div>
+                            <% :cannibalization -> %>
+                              <div class={"badge #{get_score_badge_class(result.score)}"}>
+                                <%= cond do %>
+                                  <% result.score <= 2 -> %>
+                                    Mức độ nhẹ
+                                  <% result.score <= 4 -> %>
+                                    Cần chú ý
+                                  <% result.score <= 6 -> %>
+                                    Nghiêm trọng
+                                  <% true -> %>
+                                    Rất nghiêm trọng
+                                <% end %>
+                              </div>
+                            <% _ -> %>
+                              <div class="badge badge-neutral">Không xác định</div>
+                          <% end %>
+                        </td>
+                        <td class="text-center">
+                          <div class={"badge #{get_score_badge_class(result.score)}"}>
+                            {result.score}
+                          </div>
+                        </td>
+                        <td class="text-center">
+                          <div class="badge badge-neutral">{length(result.urls)}</div>
+                        </td>
+                        <td class="text-center">
+                          <button
+                            type="button"
+                            phx-click="select_keyword"
+                            phx-value-index={index}
+                            class="btn btn-sm btn-ghost"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              class="h-4 w-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                              />
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                              />
+                            </svg>
+                          </button>
+                        </td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          
+<!-- Keyword Tabs -->
+          <div class="tabs tabs-bordered mb-6 overflow-x-auto flex-nowrap border-b-2 border-base-300">
+            <%= for {result, index} <- Enum.with_index(@cannibalization_results) do %>
+              <button
+                type="button"
+                phx-click="select_keyword"
+                phx-value-index={index}
+                class={"tab tab-bordered whitespace-nowrap gap-2 #{if @selected_keyword_index == index, do: "tab-active"}"}
+              >
+                <span>{result.keyword}</span>
+                <div class={"badge badge-sm #{get_score_badge_class(result.score)}"}>
+                  {result.score}
+                </div>
+              </button>
+            <% end %>
+          </div>
+          
+<!-- Selected Keyword Details -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left Column: Score Circle -->
+            <div class="flex flex-col items-center justify-center bg-base-200 rounded-lg p-6">
+              <h3 class="text-lg font-semibold mb-4">Điểm Cannibalization</h3>
+
+              <div class="relative inline-flex items-center justify-center">
+                <svg class="transform -rotate-90 w-40 h-40">
+                  <!-- Background circle -->
+                  <circle
+                    cx="80"
+                    cy="80"
+                    r="70"
+                    stroke="currentColor"
+                    stroke-width="12"
+                    fill="transparent"
+                    class="text-base-300"
+                  />
+                  <!-- Progress circle -->
+                  <circle
+                    cx="80"
+                    cy="80"
+                    r="70"
+                    stroke="currentColor"
+                    stroke-width="12"
+                    fill="transparent"
+                    stroke-dasharray={circumference}
+                    stroke-dashoffset={stroke_dashoffset}
+                    stroke-linecap="round"
+                    class={
+                      cond do
+                        score <= 2 -> "text-success"
+                        score <= 4 -> "text-warning"
+                        score <= 6 -> "text-error"
+                        true -> "text-error"
+                      end
+                    }
+                  />
+                </svg>
+
+                <div class={[
+                  "absolute text-center",
+                  cond do
+                    score <= 2 -> "text-success"
+                    score <= 4 -> "text-warning"
+                    score <= 6 -> "text-error"
+                    true -> "text-error"
+                  end
+                ]}>
+                  <div class="text-4xl font-bold">{score}</div>
+                </div>
+              </div>
+
+              <div class="mt-4 text-center">
+                <%= case selected_result.status do %>
+                  <% :no_results -> %>
+                    <div class="badge badge-lg badge-ghost">
+                      Không tìm thấy kết quả
+                    </div>
+                  <% :safe -> %>
+                    <div class="badge badge-lg badge-success">
+                      An toàn - Chỉ 1 URL
+                    </div>
+                  <% :error -> %>
+                    <div class="badge badge-lg badge-error">
+                      Lỗi khi scrape
+                    </div>
+                  <% :cannibalization -> %>
+                    <div class={"badge badge-lg #{get_score_badge_class(score)}"}>
+                      <%= cond do %>
+                        <% score <= 2 -> %>
+                          Mức độ nhẹ
+                        <% score <= 4 -> %>
+                          Cần chú ý
+                        <% score <= 6 -> %>
+                          Nghiêm trọng
+                        <% true -> %>
+                          Rất nghiêm trọng
+                      <% end %>
+                    </div>
+                  <% _ -> %>
+                    <div class="badge badge-lg badge-neutral">
+                      Không xác định
+                    </div>
+                <% end %>
+              </div>
+            </div>
+            
+<!-- Right Column: Details -->
+            <div class="lg:col-span-2 space-y-4">
+              <!-- Keyword Name -->
+              <div class="card bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20">
+                <div class="card-body p-4">
+                  <h3 class="text-xl font-bold text-primary">{selected_result.keyword}</h3>
+                </div>
+              </div>
+              
+<!-- Score Breakdown -->
+              <div class="grid grid-cols-2 gap-4">
+                <!-- Base Score -->
+                <div class="stat bg-base-200 rounded-lg p-4">
+                  <div class="stat-figure text-primary">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      class="inline-block w-8 h-8 stroke-current"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                  </div>
+                  <div class="stat-title">Base Score</div>
+                  <div class="stat-value text-primary text-3xl">
+                    {selected_result.details.base_score}
+                  </div>
+                  <div class="stat-desc">{length(selected_result.urls)} URLs cạnh tranh</div>
+                </div>
+                
+<!-- Similarity Score -->
+                <div class="stat bg-base-200 rounded-lg p-4">
+                  <div class="stat-figure text-secondary">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      class="inline-block w-8 h-8 stroke-current"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                  </div>
+                  <div class="stat-title">Title/H1 Similarity</div>
+                  <div class={"stat-value text-3xl #{if selected_result.details.title_h1_similarity > 0.8, do: "text-error", else: "text-success"}"}>
+                    {Float.round(selected_result.details.title_h1_similarity * 100, 0)}%
+                  </div>
+                  <div class="stat-desc">
+                    <%= if selected_result.details.title_h1_similarity > 0.8 do %>
+                      <span class="text-error font-semibold">Cao (+2 điểm)</span>
+                    <% else %>
+                      <span class="text-success">Chấp nhận được</span>
+                    <% end %>
+                  </div>
+                </div>
+                
+<!-- Page Type -->
+                <div class="stat bg-base-200 rounded-lg p-4">
+                  <div class="stat-figure text-accent">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      class="inline-block w-8 h-8 stroke-current"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                      />
+                    </svg>
+                  </div>
+                  <div class="stat-title">Loại trang</div>
+                  <div class="stat-value text-accent text-2xl">
+                    <%= if selected_result.details.same_page_type do %>
+                      <div class="badge badge-warning badge-lg">Cùng loại</div>
+                    <% else %>
+                      <div class="badge badge-success badge-lg">Khác loại</div>
+                    <% end %>
+                  </div>
+                  <div class="stat-desc">
+                    <%= if selected_result.details.same_page_type do %>
+                      <span class="text-warning font-semibold">+1 điểm</span>
+                    <% else %>
+                      <span>Không thêm điểm</span>
+                    <% end %>
+                  </div>
+                </div>
+                
+<!-- Anchor Text Conflicts -->
+                <div class="stat bg-base-200 rounded-lg p-4">
+                  <div class="stat-figure text-error">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      class="inline-block w-8 h-8 stroke-current"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                      />
+                    </svg>
+                  </div>
+                  <div class="stat-title">Anchor Text</div>
+                  <div class="stat-value text-error text-2xl">
+                    <%= if selected_result.details.anchor_text_conflicts > 0 do %>
+                      <div class="badge badge-error badge-lg">Xung đột</div>
+                    <% else %>
+                      <div class="badge badge-success badge-lg">OK</div>
+                    <% end %>
+                  </div>
+                  <div class="stat-desc">
+                    <%= if selected_result.details.anchor_text_conflicts > 0 do %>
+                      <span class="text-error font-semibold">+3 điểm</span>
+                    <% else %>
+                      <span>Không có xung đột</span>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+              
+<!-- URLs List -->
+              <div class="card bg-base-200">
+                <div class="card-body p-4">
+                  <h4 class="font-semibold mb-3 flex items-center gap-2">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                      />
+                    </svg>
+                    URLs cạnh tranh ({length(selected_result.urls)})
+                  </h4>
+
+                  <div class="space-y-2 max-h-60 overflow-y-auto">
+                    <%= for {url, idx} <- Enum.with_index(selected_result.urls, 1) do %>
+                      <div class="flex items-start gap-2 p-2 bg-base-100 rounded hover:bg-base-300 transition-colors">
+                        <div class="badge badge-neutral badge-sm mt-1">{idx}</div>
+                        <a
+                          href={url}
+                          target="_blank"
+                          class="link link-primary text-sm break-all flex-1"
+                        >
+                          {url}
+                        </a>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="h-4 w-4 flex-shrink-0 mt-1"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                          />
+                        </svg>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- End Scrollable Content Area -->
+
+        <div class="modal-action mt-0 pt-4 pb-4 px-6 border-t border-base-300 flex justify-between">
+          <div class="flex gap-2">
+            <!-- Export Dropdown -->
+            <div class="dropdown dropdown-top">
+              <label tabindex="0" class="btn btn-success gap-2">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+                Xuất báo cáo
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M5 15l7-7 7 7"
+                  />
+                </svg>
+              </label>
+              <ul
+                tabindex="0"
+                class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52 mb-2"
+              >
+                <li>
+                  <a phx-click="export_to_xlsx">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                    Xuất Excel (.xlsx)
+                  </a>
+                </li>
+                <li>
+                  <a phx-click="export_to_google_sheet">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                    Xuất Google Sheet
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <button type="button" phx-click="close_result_modal" class="btn btn-primary">
+            Đóng
+          </button>
+        </div>
+      </div>
+    </div>
+  <% end %>
+  
+<!-- Results Section - Hidden (debug only in console) -->
+  <% results = []
+  total_pages = 1
+  paginated_results = []
+  start_index = 0 %>
+  <%= if false do %>
+    <div class="card bg-base-100 shadow-xl mb-6 border border-base-300">
+      <div class="card-body">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="card-title text-2xl">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-6 w-6 text-primary"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            Kết quả crawl ({length(results)} trang)
+          </h2>
+          
+<!-- Pagination Controls Top -->
+          <div class="join">
+            <button
+              class="join-item btn btn-sm"
+              phx-click="prev_page"
+              disabled={@current_page == 1}
+            >
+              «
+            </button>
+            <button class="join-item btn btn-sm">
+              Trang {@current_page} / {total_pages}
+            </button>
+            <button
+              class="join-item btn btn-sm"
+              phx-click="next_page"
+              disabled={@current_page == total_pages}
+            >
+              »
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="table table-zebra w-full">
+            <thead>
+              <tr>
+                <th class="w-12">#</th>
+                <th>URL</th>
+                <th>Title</th>
+                <th>H1</th>
+                <th>Description</th>
+                <th>Canonical</th>
+                <th class="text-center">Internal Links</th>
+              </tr>
+            </thead>
+            <tbody>
+              <%= for {page, index} <- Enum.with_index(paginated_results) do %>
+                <tr>
+                  <td class="font-bold">{start_index + index + 1}</td>
+                  <td>
+                    <div class="font-mono text-xs break-all max-w-xs">
+                      <a href={page.url} target="_blank" class="link link-primary">
+                        {page.url}
+                      </a>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="max-w-xs truncate" title={page.title}>
+                      {page.title || "-"}
+                    </div>
+                  </td>
+                  <td>
+                    <div class="max-w-xs truncate" title={page.h1}>
+                      {page.h1 || "-"}
+                    </div>
+                  </td>
+                  <td>
+                    <div class="max-w-xs truncate" title={page.description}>
+                      {page.description || "-"}
+                    </div>
+                  </td>
+                  <td>
+                    <%= if page.canonical_url do %>
+                      <div class="font-mono text-xs break-all max-w-xs">
+                        {page.canonical_url}
+                      </div>
+                    <% else %>
+                      <span class="text-base-content/50">-</span>
+                    <% end %>
+                  </td>
+                  <td class="text-center">
+                    <div class="badge badge-primary">{length(page.internal_links)}</div>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+        
+<!-- Pagination Controls Bottom -->
+        <div class="flex justify-center mt-4">
+          <div class="join">
+            <button
+              class="join-item btn btn-sm"
+              phx-click="prev_page"
+              disabled={@current_page == 1}
+            >
+              « Trước
+            </button>
+            <button class="join-item btn btn-sm btn-active">
+              Trang {@current_page} / {total_pages}
+            </button>
+            <button
+              class="join-item btn btn-sm"
+              phx-click="next_page"
+              disabled={@current_page == total_pages}
+            >
+              Sau »
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+<!-- Detailed Internal Links (Optional Expandable Section) -->
+    <div class="space-y-4">
+      <%= for {page, index} <- Enum.with_index(paginated_results) do %>
+        <%= if length(page.internal_links) > 0 do %>
+          <div class="collapse collapse-arrow bg-base-200">
+            <input type="checkbox" />
+            <div class="collapse-title text-lg font-medium">
+              <span class="badge badge-primary mr-2">{start_index + index + 1}</span>
+              Internal Links từ {page.url} ({length(page.internal_links)} links)
+            </div>
+            <div class="collapse-content">
+              <div class="overflow-x-auto">
+                <table class="table table-sm w-full">
+                  <thead>
+                    <tr>
+                      <th class="w-12">#</th>
+                      <th>Target URL</th>
+                      <th>Anchor Text</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <%= for {link, link_index} <- Enum.with_index(page.internal_links) do %>
+                      <tr>
+                        <td>{link_index + 1}</td>
+                        <td>
+                          <div class="font-mono text-xs break-all">
+                            <a href={link.target_url} target="_blank" class="link link-primary">
+                              {link.target_url}
+                            </a>
+                          </div>
+                        </td>
+                        <td>{link.anchor_text}</td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+</div>

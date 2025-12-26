@@ -101,6 +101,10 @@ defmodule Levanngoc.External.ScrapingDog do
     check_keyword_ranking_with_pagination(state, keyword, url, 0)
   end
 
+  def scraping_cannibal(%__MODULE__{} = state, url, keyword, max_results) do
+    scraping_cannibal_with_pagination(state, url, keyword, max_results, 0, [])
+  end
+
   defp check_keyword_ranking_with_pagination(_state, _keyword, _url, page) when page > 10 do
     nil
   end
@@ -128,6 +132,59 @@ defmodule Levanngoc.External.ScrapingDog do
 
               result ->
                 Map.get(result, "page_rank")
+            end
+
+          {:error, reason} ->
+            raise "Failed to parse JSON response: #{inspect(reason)}"
+        end
+
+      {:ok, %HTTPoison.Response{status_code: status_code, body: body}} ->
+        raise "Request failed with status code #{status_code}: #{body}"
+
+      {:error, %HTTPoison.Error{reason: reason}} ->
+        raise "HTTP request failed: #{inspect(reason)}"
+    end
+  end
+
+  defp scraping_cannibal_with_pagination(_state, _url, _keyword, max_results, _page, acc)
+       when length(acc) >= max_results do
+    Enum.take(acc, max_results)
+  end
+
+  defp scraping_cannibal_with_pagination(_state, _url, _keyword, _max_results, page, acc)
+       when page > 10 do
+    acc
+  end
+
+  defp scraping_cannibal_with_pagination(state, url, keyword, max_results, page, acc) do
+    params = build_params(state, :scraping_cannibal, url, keyword, page)
+
+    query_string = URI.encode_query(params)
+    full_url = "#{@check_index_url_endpoint}?#{query_string}"
+
+    case HTTPoison.get(full_url, [], recv_timeout: :timer.seconds(60)) do
+      {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
+        case Jason.decode(body) do
+          {:ok, data} ->
+            organic_results = Map.get(data, "organic_results", [])
+
+            # Extract URLs from organic results
+            urls = Enum.map(organic_results, fn result -> Map.get(result, "link") end)
+
+            new_acc = acc ++ urls
+
+            # Continue pagination if we haven't reached max_results
+            if length(new_acc) >= max_results do
+              Enum.take(new_acc, max_results)
+            else
+              scraping_cannibal_with_pagination(
+                state,
+                url,
+                keyword,
+                max_results,
+                page + 1,
+                new_acc
+              )
             end
 
           {:error, reason} ->
@@ -177,6 +234,17 @@ defmodule Levanngoc.External.ScrapingDog do
     %{
       api_key: state.api_key,
       query: "#{keyword}",
+      country: "vn",
+      advance_search: "true",
+      domain: "google.com",
+      page: page
+    }
+  end
+
+  defp build_params(%__MODULE__{} = state, :scraping_cannibal, url, keyword, page) do
+    %{
+      api_key: state.api_key,
+      query: "site:#{url} \"#{keyword}\"",
       country: "vn",
       advance_search: "true",
       domain: "google.com",

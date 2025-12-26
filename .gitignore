@@ -38,3 +38,4 @@ npm-debug.log
 /*.log
 google_application_credentials.json
 .env
+.env.prod

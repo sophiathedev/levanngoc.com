@@ -46,7 +46,7 @@ defmodule Mix.Tasks.CreateSuperuser do
     end
 
     # Kiểm tra định dạng email cơ bản
-    unless valid_email_format?(email) do
+    if !valid_email_format?(email) do
       Mix.shell().error("Lỗi: Định dạng email không hợp lệ.")
       System.halt(1)
     end

@@ -56,6 +56,14 @@ defmodule Levanngoc.Application do
          [name: :popup_cache, expiration: Cachex.Spec.expiration(default: :timer.minutes(30))]},
         id: :cachex_popup_cache
       ),
+      Supervisor.child_spec(
+        {Cachex,
+         [
+           name: :crawl_cache,
+           expiration: Cachex.Spec.expiration(default: :timer.hours(2))
+         ]},
+        id: :cachex_crawl_cache
+      ),
       # Start Mailgun settings cache
       Levanngoc.Settings.MailgunCache,
       # Start Oban
