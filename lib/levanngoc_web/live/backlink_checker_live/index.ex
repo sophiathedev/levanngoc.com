@@ -6,7 +6,7 @@ defmodule LevanngocWeb.BacklinkCheckerLive.Index do
     {:ok,
      socket
      |> assign(:page_title, "Kiểm tra Backlink")
-     |> assign(:thread_count, 4)
+     |> assign(:thread_count, 16)
      |> assign(:domain, "")
      |> assign(:url_list, "")
      |> assign(:show_result_modal, false)
@@ -20,11 +20,6 @@ defmodule LevanngocWeb.BacklinkCheckerLive.Index do
   @impl true
   def handle_event("validate", _params, socket) do
     {:noreply, socket}
-  end
-
-  @impl true
-  def handle_event("update_thread_count", %{"thread_count" => thread_count}, socket) do
-    {:noreply, assign(socket, :thread_count, String.to_integer(thread_count))}
   end
 
   @impl true
@@ -373,41 +368,20 @@ defmodule LevanngocWeb.BacklinkCheckerLive.Index do
       <div class="card bg-base-100 shadow-xl border border-base-300 flex-1 flex flex-col">
         <div class="card-body p-4 flex flex-col flex-1">
           <form phx-change="validate" phx-submit="check_backlinks" class="flex flex-col flex-1">
-            <!-- First row: Thread count and Domain -->
-            <div class="grid grid-cols-2 gap-4 mb-4">
-              <!-- Thread count column -->
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text">Số luồng</span>
-                </label>
-                <select
-                  class="select select-bordered w-full"
-                  name="thread_count"
-                  phx-change="update_thread_count"
-                  disabled={@is_processing}
-                >
-                  <option value="2" selected={@thread_count == 2}>Chậm (2 luồng)</option>
-                  <option value="4" selected={@thread_count == 4}>Trung bình (4 luồng)</option>
-                  <option value="8" selected={@thread_count == 8}>Nhanh (8 luồng)</option>
-                  <option value="16" selected={@thread_count == 16}>Rất nhanh (16 luồng)</option>
-                </select>
-              </div>
-              
-    <!-- Domain column -->
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text">Domain cần kiểm tra</span>
-                </label>
-                <input
-                  type="text"
-                  class="input input-bordered w-full"
-                  placeholder="Ví dụ: example.com"
-                  name="domain"
-                  value={@domain}
-                  phx-change="update_domain"
-                  disabled={@is_processing}
-                />
-              </div>
+            <!-- Domain input -->
+            <div class="form-control mb-4">
+              <label class="label">
+                <span class="label-text">Domain cần kiểm tra</span>
+              </label>
+              <input
+                type="text"
+                class="input input-bordered w-full"
+                placeholder="Ví dụ: example.com"
+                name="domain"
+                value={@domain}
+                phx-change="update_domain"
+                disabled={@is_processing}
+              />
             </div>
             
     <!-- Second row: URL list textarea -->
