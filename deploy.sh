@@ -14,9 +14,6 @@ handle_error() {
 # Bắt sự kiện lỗi (ERR) và gọi hàm handle_error
 trap handle_error ERR
 
-echo "🚀 Bắt đầu quá trình deploy..."
-
-echo "----------------------------------------"
 echo "1. Dừng process 'levanngoc' đang chạy..."
 pkill -f levanngoc || true
 
@@ -36,8 +33,11 @@ MIX_ENV=prod mix release
 echo "5. Load biến môi trường..."
 source .env
 
-echo "6. Khởi động server dưới dạng daemon..."
+echo "6. Tiến hành migrate databases..."
+_build/prod/rel/levanngoc/bin/migrate
+
+echo "7. Khởi động server dưới dạng daemon..."
 _build/prod/rel/levanngoc/bin/levanngoc daemon
 
 echo "----------------------------------------"
-echo "✅ Deploy thành công!"
+echo "Deploy thành công!"
