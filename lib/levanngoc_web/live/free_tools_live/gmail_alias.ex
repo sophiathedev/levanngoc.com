@@ -41,18 +41,20 @@ defmodule LevanngocWeb.FreeToolsLive.GmailAlias do
         socket.assigns.alias_method
       )
 
-    {:noreply, assign(socket, :generated_aliases, aliases)}
+    {:noreply,
+     socket
+     |> assign(:generated_count, String.split(aliases, "\n") |> length())
+     |> push_event("aliases_generated", %{aliases: aliases})}
   end
 
   @impl true
   def handle_event("export_to_txt", _params, socket) do
-    # Client-side export will be handled via JS hook
     {:noreply, socket}
   end
 
   defp generate_alias_list(email, num_str, method) do
     with {num, _} <- Integer.parse(num_str),
-         true <- num > 0 and num <= 500,
+         true <- num > 0 and num <= 10000,
          [username, domain] <- String.split(email, "@", parts: 2) do
       case method do
         "plus" -> generate_plus_aliases(username, domain, num)
@@ -64,13 +66,11 @@ defmodule LevanngocWeb.FreeToolsLive.GmailAlias do
     end
   end
 
-  # Generate random +alias variations (like Python's random_plus_aliases)
   defp generate_plus_aliases(username, domain, count) do
-    1..count
-    |> Enum.map(fn _ ->
-      # Generate random string of 5-10 characters (lowercase + digits)
+    chars = "abcdefghijklmnopqrstuvwxyz0123456789" |> String.graphemes()
+
+    Stream.repeatedly(fn ->
       alias_length = Enum.random(5..10)
-      chars = "abcdefghijklmnopqrstuvwxyz0123456789" |> String.graphemes()
 
       random_alias =
         1..alias_length
@@ -79,39 +79,43 @@ defmodule LevanngocWeb.FreeToolsLive.GmailAlias do
 
       "#{username}+#{random_alias}@#{domain}"
     end)
-    |> Enum.uniq()
+    |> Stream.uniq()
     |> Enum.take(count)
     |> Enum.join("\n")
   end
 
-  # Generate dot variations (like Python's dot_variations)
-  # Creates all possible combinations of inserting dots between characters
   defp generate_dot_variations(username, domain, max_variants) do
     if String.length(username) <= 1 do
       "#{username}@#{domain}"
     else
-      # Get all positions where we can insert dots (between characters)
       indices = 1..(String.length(username) - 1) |> Enum.to_list()
-
-      # Generate all combinations of dot positions (up to 9 dots max)
       max_dots = min(length(indices), 9)
 
-      variations =
-        1..max_dots
-        |> Enum.flat_map(fn dot_count ->
-          combinations(indices, dot_count)
-        end)
-        |> Enum.map(fn dot_positions ->
-          insert_dots_at_indices(username, dot_positions, domain)
-        end)
-        |> Enum.uniq()
-        |> Enum.take(max_variants)
+      # Generate variations lazily
+      Stream.resource(
+        fn -> {1, []} end,
+        fn
+          {current_dots, _acc} when current_dots > max_dots ->
+            {:halt, nil}
 
-      Enum.join(variations, "\n")
+          {current_dots, _acc} ->
+            current_combos = combinations(indices, current_dots)
+            # Map combinations to email variations
+            variations =
+              Enum.map(current_combos, fn dot_positions ->
+                insert_dots_at_indices(username, dot_positions, domain)
+              end)
+
+            {variations, {current_dots + 1, []}}
+        end,
+        fn _ -> :ok end
+      )
+      |> Stream.uniq()
+      |> Enum.take(max_variants)
+      |> Enum.join("\n")
     end
   end
 
-  # Generate combinations of size k from a list (like Python's itertools.combinations)
   defp combinations(_, 0), do: [[]]
   defp combinations([], _), do: []
 
@@ -119,7 +123,6 @@ defmodule LevanngocWeb.FreeToolsLive.GmailAlias do
     for(l <- combinations(t, k - 1), do: [h | l]) ++ combinations(t, k)
   end
 
-  # Insert dots at specified indices in username
   defp insert_dots_at_indices(username, dot_positions, domain) do
     graphemes = String.graphemes(username)
 
@@ -127,13 +130,7 @@ defmodule LevanngocWeb.FreeToolsLive.GmailAlias do
       graphemes
       |> Enum.with_index()
       |> Enum.map(fn {char, idx} ->
-        # Check if we should add a dot after this character
-        # dot_positions are 1-based indices (between characters)
-        if (idx + 1) in dot_positions do
-          char <> "."
-        else
-          char
-        end
+        if (idx + 1) in dot_positions, do: char <> ".", else: char
       end)
       |> Enum.join("")
 
@@ -169,12 +166,12 @@ defmodule LevanngocWeb.FreeToolsLive.GmailAlias do
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div class="form-control w-full">
                 <label class="label">
-                  <span class="label-text font-medium">Số lượng alias (100 - 500):</span>
+                  <span class="label-text font-medium">Số lượng alias (100 - 10000):</span>
                 </label>
                 <input
                   type="number"
                   min="100"
-                  max="500"
+                  max="10000"
                   placeholder="100"
                   class="input input-bordered w-full"
                   value={@num_aliases}
@@ -208,17 +205,20 @@ defmodule LevanngocWeb.FreeToolsLive.GmailAlias do
                 class="textarea textarea-bordered w-full flex-1 font-mono text-sm"
                 readonly
                 id="alias-result"
-              ><%= @generated_aliases %></textarea>
+                spellcheck="false"
+                wrap="off"
+                style="contain: strict; white-space: pre; overflow: auto;"
+                phx-update="ignore"
+              ></textarea>
             </div>
             
-    <!-- Buttons -->
-            <div class="flex gap-3 justify-end">
+    <!-- But -->
+            <div class="flex justify-between items-center">
               <button
                 type="button"
-                class="btn btn-info"
-                phx-click="export_to_txt"
-                disabled={@generated_aliases == ""}
-                onclick="exportToTxt()"
+                id="btn-copy"
+                class="btn btn-secondary"
+                onclick="copyToClipboard(this)"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -231,33 +231,59 @@ defmodule LevanngocWeb.FreeToolsLive.GmailAlias do
                     stroke-linecap="round"
                     stroke-linejoin="round"
                     stroke-width="2"
-                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
                   />
                 </svg>
-                Xuất file .txt
+                Copy
               </button>
 
-              <button
-                type="submit"
-                class="btn btn-primary"
-                disabled={@gmail_address == "" or @num_aliases == ""}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="h-5 w-5 mr-2"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+              <div class="flex gap-3">
+                <button
+                  type="button"
+                  id="btn-export"
+                  class="btn btn-info"
+                  onclick="exportToTxt()"
                 >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
-                Tạo alias
-              </button>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5 mr-2"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  Xuất file .txt
+                </button>
+
+                <button
+                  type="submit"
+                  class="btn btn-primary"
+                  disabled={@gmail_address == "" or @num_aliases == ""}
+                  phx-disable-with="Đang tạo..."
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5 mr-2"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  Tạo alias
+                </button>
+              </div>
             </div>
           </form>
         </div>
@@ -265,8 +291,36 @@ defmodule LevanngocWeb.FreeToolsLive.GmailAlias do
     </div>
 
     <script>
+      window.addEventListener("phx:aliases_generated", (e) => {
+        const textarea = document.getElementById('alias-result');
+        textarea.value = e.detail.aliases;
+
+        // Reset button states when new aliases are generated
+        const btnCopy = document.getElementById('btn-copy');
+        btnCopy.disabled = false;
+        const btnExport = document.getElementById('btn-export');
+        btnExport.disabled = false;
+      });
+
+      function copyToClipboard(btn) {
+        const content = document.getElementById('alias-result').value;
+        if (!content) return;
+
+        navigator.clipboard.writeText(content).then(() => {
+          const originalHTML = btn.innerHTML;
+          btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg> Đã copy!';
+          btn.classList.replace('btn-secondary', 'btn-success');
+
+          setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.classList.replace('btn-success', 'btn-secondary');
+          }, 2000);
+        });
+      }
+
       function exportToTxt() {
         const content = document.getElementById('alias-result').value;
+        if (!content) return;
         const blob = new Blob([content], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
