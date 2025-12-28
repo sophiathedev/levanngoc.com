@@ -28,7 +28,7 @@ defmodule LevanngocWeb.KeywordGroupingLive.Index do
      |> assign(:show_confirm_modal, false)
      |> assign(:cost_details, nil)
      |> assign(:project_name, "")
-     |> assign(:similarity_threshold, "0.4")
+     |> assign(:similarity_threshold, "0.3")
      |> assign(:keywords_input, "")
      |> assign(:original_keyword_order, [])
      |> assign(:is_exporting_sheets, false)
