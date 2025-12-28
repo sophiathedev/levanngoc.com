@@ -60,31 +60,50 @@ defmodule LevanngocWeb.SeoImageLive.ImageCompression do
             {path, client_name}
           end)
 
-        zip_filename = "compressed_images_#{System.os_time(:second)}.zip"
-        zip_path = Path.join(System.tmp_dir!(), zip_filename)
+        # If only 1 image, download directly without zipping
+        socket =
+          if length(processed_files) == 1 do
+            [{file_path, client_name}] = processed_files
+            file_content = File.read!(file_path)
+            File.rm(file_path)
 
-        files_to_zip =
-          Enum.map(processed_files, fn {file, client_name} ->
-            {String.to_charlist(client_name), File.read!(file)}
-          end)
+            IO.puts("Compression successful, pushing download event for single file...")
 
-        {:ok, _zip_file} = :zip.create(String.to_charlist(zip_path), files_to_zip)
+            socket
+            |> put_flash(:info, "Đã nén ảnh thành công!")
+            |> push_event("download-file", %{
+              content: Base.encode64(file_content),
+              filename: client_name
+            })
+          else
+            # Multiple images, create zip
+            zip_filename = "compressed_images_#{System.os_time(:second)}.zip"
+            zip_path = Path.join(System.tmp_dir!(), zip_filename)
 
-        # Cleanup processed files
-        Enum.each(processed_files, fn {path, _} -> File.rm(path) end)
+            files_to_zip =
+              Enum.map(processed_files, fn {file, client_name} ->
+                {String.to_charlist(client_name), File.read!(file)}
+              end)
 
-        zip_content = File.read!(zip_path)
-        File.rm(zip_path)
+            {:ok, _zip_file} = :zip.create(String.to_charlist(zip_path), files_to_zip)
 
-        IO.puts("Compression successful, pushing download event...")
+            # Cleanup processed files
+            Enum.each(processed_files, fn {path, _} -> File.rm(path) end)
 
-        {:noreply,
-         socket
-         |> put_flash(:info, "Đã nén #{length(processed_files)} ảnh thành công!")
-         |> push_event("download-file", %{
-           content: Base.encode64(zip_content),
-           filename: zip_filename
-         })}
+            zip_content = File.read!(zip_path)
+            File.rm(zip_path)
+
+            IO.puts("Compression successful, pushing download event for zip file...")
+
+            socket
+            |> put_flash(:info, "Đã nén #{length(processed_files)} ảnh thành công!")
+            |> push_event("download-file", %{
+              content: Base.encode64(zip_content),
+              filename: zip_filename
+            })
+          end
+
+        {:noreply, socket}
       rescue
         e ->
           IO.inspect(e, label: "Compression Error")
@@ -114,25 +133,101 @@ defmodule LevanngocWeb.SeoImageLive.ImageCompression do
   end
 
   defp process_image(file_path, mode, quality) do
-    image = Mogrify.open(file_path)
+    # Get original file size
+    original_size = get_file_size(file_path)
 
-    image =
-      case mode do
-        "standard" ->
-          image
-          |> Mogrify.quality(to_string(quality))
-          |> Mogrify.save(in_place: true)
+    # Create backup
+    backup_path = create_backup(file_path)
 
-        "remove_exif" ->
-          image
-          |> Mogrify.custom("strip")
-          |> Mogrify.save(in_place: true)
+    try do
+      # Open image with Mogrify
+      image = Mogrify.open(file_path)
 
-        _ ->
-          image
+      # Apply compression based on mode
+      image =
+        case mode do
+          "standard" ->
+            # Standard compression with metadata optimization
+            image
+            |> Mogrify.custom("strip")
+            |> Mogrify.custom("interlace", "Plane")
+            |> Mogrify.custom("sampling-factor", "4:2:0")
+            |> Mogrify.custom("define", "jpeg:optimize-coding=true")
+            |> Mogrify.auto_orient()
+            |> Mogrify.quality(to_string(quality))
+            |> Mogrify.save(in_place: true)
+
+          "remove_exif" ->
+            # Aggressive compression with full metadata removal
+            image
+            |> Mogrify.custom("strip")
+            |> Mogrify.custom("interlace", "Plane")
+            |> Mogrify.custom("sampling-factor", "4:2:0")
+            |> Mogrify.custom("define", "jpeg:optimize-coding=true")
+            |> Mogrify.custom("define", "jpeg:preserve-icc=false")
+            |> Mogrify.auto_orient()
+            |> Mogrify.quality(to_string(quality))
+            |> Mogrify.save(in_place: true)
+
+          _ ->
+            image
+        end
+
+      # Check if compression actually reduced file size
+      case restore_if_larger(file_path, backup_path, original_size) do
+        {:restored, _} ->
+          IO.puts("Warning: Compressed file was larger, kept original: #{file_path}")
+
+        {:compressed, new_size, orig_size} ->
+          reduction = Float.round((1 - new_size / orig_size) * 100, 1)
+
+          IO.puts(
+            "Successfully compressed #{file_path}: #{orig_size} -> #{new_size} bytes (#{reduction}% reduction)"
+          )
       end
 
-    image.path
+      image.path
+    rescue
+      e ->
+        # If anything fails, restore backup
+        if File.exists?(backup_path) do
+          File.cp!(backup_path, file_path)
+          File.rm(backup_path)
+        end
+
+        reraise e, __STACKTRACE__
+    end
+  end
+
+  # Get file size in bytes
+  defp get_file_size(path) do
+    case File.stat(path) do
+      {:ok, %{size: size}} -> size
+      {:error, _} -> 0
+    end
+  end
+
+  # Create backup of original file
+  defp create_backup(file_path) do
+    backup_path = "#{file_path}.backup"
+    File.cp!(file_path, backup_path)
+    backup_path
+  end
+
+  # Restore from backup if compressed file is larger
+  defp restore_if_larger(file_path, backup_path, original_size) do
+    new_size = get_file_size(file_path)
+
+    if new_size >= original_size do
+      # Compressed file is larger, restore original
+      File.cp!(backup_path, file_path)
+      File.rm(backup_path)
+      {:restored, original_size}
+    else
+      # Compression successful
+      File.rm(backup_path)
+      {:compressed, new_size, original_size}
+    end
   end
 
   defp error_to_string(:too_large), do: "File quá lớn"
