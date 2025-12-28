@@ -9,15 +9,27 @@ defmodule Levanngoc.KeywordCannibalization.Scorer do
   Score a keyword based on cannibalization criteria.
 
   Returns: %{
+    keyword: string,
     score: integer,
     urls: list of URLs,
+    status: "cannibalization" | "mention_only" | "safe",
     details: %{
       base_score: integer,
       title_h1_similarity: float,
       same_page_type: boolean,
       anchor_text_conflicts: integer
+    },
+    visualization: %{
+      percentage: float,
+      circumference: float,
+      stroke_dashoffset: float
     }
   }
+
+  Status is determined by score:
+  - score >= 5: "cannibalization" (severe keyword cannibalization)
+  - score >= 2: "mention_only" (warning - multiple mentions)
+  - score < 2: "safe"
   """
   def score_keyword(keyword, urls, crawled_data) do
     # Sort URLs first to ensure consistent ordering
@@ -56,10 +68,19 @@ defmodule Levanngoc.KeywordCannibalization.Scorer do
       circumference = 2.0 * 3.14159 * 70.0
       stroke_dashoffset = Float.round(circumference - percentage / 100.0 * circumference, 2)
 
+      # Determine status based on score
+      status =
+        cond do
+          total_score >= 5 -> "cannibalization"
+          total_score >= 2 -> "mention_only"
+          true -> "safe"
+        end
+
       %{
         keyword: keyword,
         score: total_score,
         urls: Enum.map(url_details, fn {url, _} -> url end),
+        status: status,
         details: %{
           base_score: base_score,
           title_h1_similarity: rounded_similarity,

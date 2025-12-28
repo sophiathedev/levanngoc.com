@@ -80,7 +80,10 @@ config :phoenix, :json_library, Jason
 config :levanngoc, Oban,
   engine: Oban.Engines.Basic,
   notifier: Oban.Notifiers.Postgres,
-  queues: [default: 10],
+  queues: [
+    default: 10,
+    keyword_cannibalization: 1
+  ],
   repo: Levanngoc.Repo,
   plugins: [
     {

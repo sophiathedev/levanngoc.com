@@ -3,35 +3,54 @@ defmodule LevanngocWeb.CheckKeywordCannibalizationLive.Index do
 
   require Logger
 
-  alias Levanngoc.KeywordCannibalization.{Sitemap, HtmlParser, PageData, Scorer}
-  alias Levanngoc.External.{ScrapingDog, GoogleDrive}
-  alias Levanngoc.Settings.AdminSetting
-  alias Levanngoc.Repo
-
-  # Configuration
-  @max_urls_to_crawl 10000
-  @max_internal_links 100
-  @crawl_concurrency 40
-  @keyword_scraping_concurrency 30
-  @results_dir "priv/crawl_results"
+  alias Levanngoc.External.GoogleDrive
+  alias Levanngoc.{KeywordCannibalizationProject, KeywordCannibalizationProjects}
 
   @impl true
   def mount(_params, session, socket) do
+    user = socket.assigns.current_scope.user
+
+    # Load user's projects
+    projects = KeywordCannibalizationProjects.list_projects(user.id)
+
+    # Check if there's a running project to auto-subscribe
+    running_project = KeywordCannibalizationProjects.get_running_project(user.id)
+
+    # Subscribe to running project if exists
+    if running_project do
+      Phoenix.PubSub.subscribe(
+        Levanngoc.PubSub,
+        "cannibalization_project:#{running_project.id}"
+      )
+    end
+
+    progress_message =
+      if running_project do
+        case Cachex.get(:cache, {:cannibalization_progress, running_project.id}) do
+          {:ok, msg} when is_binary(msg) -> msg
+          _ -> "Đang xử lý..."
+        end
+      else
+        nil
+      end
+
     {:ok,
      socket
      |> assign(:page_title, "Kiểm tra Ăn thịt từ khóa")
-     |> assign(:domain_input, "")
-     |> assign(:result_limit, 20)
+     |> assign(:projects, projects)
+     |> assign(:running_project_id, running_project && running_project.id)
+     |> assign(:progress_message, progress_message)
+     |> assign(:show_modal, false)
+     |> assign(:modal_action, nil)
+     |> assign(:modal_project, nil)
+     |> assign(:form, nil)
      |> assign(:is_edit_mode, true)
      |> assign(:manual_keywords, "")
-     |> assign(:checking, false)
-     |> assign(:result_file, nil)
-     |> assign(:error_message, nil)
-     |> assign(:current_page, 1)
-     |> assign(:per_page, 20)
      |> assign(:cannibalization_results, [])
      |> assign(:show_result_modal, false)
+     |> assign(:selected_project, nil)
      |> assign(:selected_keyword_index, 0)
+     |> assign(:domain_input, "")
      |> assign(:user_email, Map.get(session, "user_email", "anonymous"))
      |> assign(:session_id, Map.get(session, "session_id", "unknown"))
      |> allow_upload(:file,
@@ -41,21 +60,207 @@ defmodule LevanngocWeb.CheckKeywordCannibalizationLive.Index do
      )}
   end
 
+  # Modal Management Event Handlers
+
+  @impl true
+  def handle_event("open_new_project_modal", _params, socket) do
+    user_id = socket.assigns.current_scope.user.id
+
+    if KeywordCannibalizationProjects.has_running_project?(user_id) do
+      {:noreply,
+       socket
+       |> put_flash(:error, "Bạn đã có một dự án đang chạy. Vui lòng đợi hoàn thành.")}
+    else
+      # Create empty project struct for form
+      project = %KeywordCannibalizationProject{}
+      changeset = KeywordCannibalizationProject.changeset(project, %{})
+      form = to_form(changeset, as: "project")
+
+      {:noreply,
+       socket
+       |> assign(:show_modal, true)
+       |> assign(:modal_action, :new)
+       |> assign(:modal_project, project)
+       |> assign(:form, form)
+       |> assign(:manual_keywords, "")
+       |> assign(:is_edit_mode, true)}
+    end
+  end
+
+  @impl true
+  def handle_event("close_modal", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_modal, false)
+     |> assign(:modal_action, nil)
+     |> assign(:modal_project, nil)
+     |> assign(:form, nil)
+     |> assign(:manual_keywords, "")
+     |> assign(:is_edit_mode, true)}
+  end
+
+  @impl true
+  def handle_event("validate", %{"project" => project_params}, socket) do
+    changeset =
+      socket.assigns.modal_project
+      |> KeywordCannibalizationProject.changeset(project_params)
+      |> Map.put(:action, :validate)
+
+    {:noreply, assign(socket, :form, to_form(changeset, as: "project"))}
+  end
+
+  # Keep old validate handler for backward compatibility
   @impl true
   def handle_event("validate", _params, socket) do
     {:noreply, socket}
   end
 
   @impl true
-  def handle_event("update_domain", %{"value" => value}, socket) do
-    {:noreply, assign(socket, :domain_input, String.trim(value))}
+  def handle_event("create_project", %{"project" => project_params}, socket) do
+    user = socket.assigns.current_scope.user
+
+    # Check for running project again (defensive)
+    if KeywordCannibalizationProjects.has_running_project?(user.id) do
+      {:noreply,
+       socket
+       |> put_flash(:error, "Bạn đã có một dự án đang chạy. Vui lòng đợi hoàn thành.")}
+    else
+      # Parse keywords from textarea or file
+      keywords = parse_keywords_from_form(socket)
+
+      if length(keywords) == 0 do
+        {:noreply,
+         socket
+         |> put_flash(:error, "Vui lòng nhập ít nhất một từ khóa")}
+      else
+        # Prepare project attributes
+        attrs = %{
+          name: project_params["name"],
+          domain: project_params["domain"],
+          keywords: keywords,
+          result_limit: String.to_integer(project_params["result_limit"] || "20"),
+          user_id: user.id,
+          status: "pending"
+        }
+
+        # Create project in DB
+        case KeywordCannibalizationProjects.create_project(attrs) do
+          {:ok, project} ->
+            # Enqueue Oban job
+            %{project_id: project.id}
+            |> Levanngoc.Jobs.KeywordCannibalizationWorker.new()
+            |> Oban.insert()
+
+            # Subscribe to PubSub for this project
+            Phoenix.PubSub.subscribe(
+              Levanngoc.PubSub,
+              "cannibalization_project:#{project.id}"
+            )
+
+            # Reload projects list
+            projects = KeywordCannibalizationProjects.list_projects(user.id)
+
+            {:noreply,
+             socket
+             |> assign(:show_modal, false)
+             |> assign(:modal_action, nil)
+             |> assign(:modal_project, nil)
+             |> assign(:form, nil)
+             |> assign(:projects, projects)
+             |> assign(:running_project_id, project.id)
+             |> assign(:progress_message, "Đang khởi động...")
+             |> put_flash(:info, "Dự án đã được tạo và đang xử lý...")}
+
+          {:error, changeset} ->
+            {:noreply, assign(socket, :form, to_form(changeset, as: "project"))}
+        end
+      end
+    end
+  end
+
+  # Project Management Event Handlers
+
+  @impl true
+  def handle_event("view_project_results", %{"project_id" => project_id}, socket) do
+    user_id = socket.assigns.current_scope.user.id
+
+    project = KeywordCannibalizationProjects.get_project!(project_id, user_id)
+
+    if project.status == "completed" && project.cannibalization_results do
+      # Convert string keys to atom keys for template compatibility
+      atomized_results = Enum.map(project.cannibalization_results, &atomize_result/1)
+
+      {:noreply,
+       socket
+       |> assign(:selected_project, project)
+       |> assign(:cannibalization_results, atomized_results)
+       |> assign(:show_result_modal, true)
+       |> assign(:selected_keyword_index, 0)
+       |> assign(:domain_input, project.domain)}
+    else
+      {:noreply, put_flash(socket, :error, "Dự án chưa hoàn thành hoặc không có kết quả")}
+    end
   end
 
   @impl true
-  def handle_event("select_limit", %{"limit" => limit_str}, socket) do
-    limit = String.to_integer(limit_str)
-    {:noreply, assign(socket, :result_limit, limit)}
+  def handle_event("delete_project", %{"project_id" => project_id}, socket) do
+    user_id = socket.assigns.current_scope.user.id
+
+    project = KeywordCannibalizationProjects.get_project!(project_id, user_id)
+
+    # Don't allow deleting running projects
+    if project.status == "running" do
+      {:noreply, put_flash(socket, :error, "Không thể xóa dự án đang chạy")}
+    else
+      {:ok, _} = KeywordCannibalizationProjects.delete_project(project)
+      projects = KeywordCannibalizationProjects.list_projects(user_id)
+
+      {:noreply,
+       socket
+       |> assign(:projects, projects)
+       |> put_flash(:info, "Đã xóa dự án")}
+    end
   end
+
+  @impl true
+  def handle_event("rerun_project", %{"project_id" => project_id}, socket) do
+    user_id = socket.assigns.current_scope.user.id
+
+    # Check if user already has a running project
+    if KeywordCannibalizationProjects.has_running_project?(user_id) do
+      {:noreply,
+       socket
+       |> put_flash(:error, "Bạn đã có một dự án đang chạy. Vui lòng đợi hoàn thành.")}
+    else
+      project = KeywordCannibalizationProjects.get_project!(project_id, user_id)
+
+      # Reset project to pending
+      {:ok, project} = KeywordCannibalizationProjects.reset_to_pending(project)
+
+      # Enqueue job
+      %{project_id: project.id}
+      |> Levanngoc.Jobs.KeywordCannibalizationWorker.new()
+      |> Oban.insert()
+
+      # Subscribe to PubSub
+      Phoenix.PubSub.subscribe(
+        Levanngoc.PubSub,
+        "cannibalization_project:#{project.id}"
+      )
+
+      # Reload projects
+      projects = KeywordCannibalizationProjects.list_projects(user_id)
+
+      {:noreply,
+       socket
+       |> assign(:projects, projects)
+       |> assign(:running_project_id, project.id)
+       |> assign(:progress_message, "Đang khởi động...")
+       |> put_flash(:info, "Đang chạy lại dự án...")}
+    end
+  end
+
+  # File Upload and Keyword Management
 
   @impl true
   def handle_event("switch_to_edit_mode", _params, socket) do
@@ -77,14 +282,16 @@ defmodule LevanngocWeb.CheckKeywordCannibalizationLive.Index do
     {:noreply, cancel_upload(socket, :file, ref)}
   end
 
+  # Results Modal Management
+
   @impl true
   def handle_event("close_result_modal", _params, socket) do
     {:noreply, assign(socket, :show_result_modal, false)}
   end
 
   @impl true
-  def handle_event("open_result_modal", _params, socket) do
-    {:noreply, assign(socket, :show_result_modal, true)}
+  def handle_event("noop", _params, socket) do
+    {:noreply, socket}
   end
 
   @impl true
@@ -92,6 +299,8 @@ defmodule LevanngocWeb.CheckKeywordCannibalizationLive.Index do
     index = String.to_integer(index_str)
     {:noreply, assign(socket, :selected_keyword_index, index)}
   end
+
+  # Export Event Handlers
 
   @impl true
   def handle_event("export_to_xlsx", _params, socket) do
@@ -147,451 +356,147 @@ defmodule LevanngocWeb.CheckKeywordCannibalizationLive.Index do
     end
   end
 
+  # PubSub Message Handler
+
   @impl true
-  def handle_event("check_cannibalization", _params, socket) do
-    domain = socket.assigns.domain_input
+  def handle_info(
+        {:project_status, %{project_id: project_id, status: status, message: message}},
+        socket
+      ) do
+    user_id = socket.assigns.current_scope.user.id
 
-    # Log start
-    Logger.info(
-      "[KEYWORD_CANNIBALIZATION] START - User: #{socket.assigns.user_email}, Domain: #{domain}, Session: #{socket.assigns.session_id}, Time: #{DateTime.utc_now()}"
-    )
+    case status do
+      "completed" ->
+        # Reload projects list to get updated status
+        projects = KeywordCannibalizationProjects.list_projects(user_id)
 
-    case validate_inputs(domain, []) do
-      :ok ->
-        result_file = generate_result_file_path(domain)
-        send(self(), {:start_crawl, domain, result_file})
+        # Unsubscribe from this project
+        Phoenix.PubSub.unsubscribe(
+          Levanngoc.PubSub,
+          "cannibalization_project:#{project_id}"
+        )
+
+        # Clear progress from cache
+        Cachex.del(:cache, {:cannibalization_progress, project_id})
 
         {:noreply,
          socket
-         |> assign(:checking, true)
-         |> assign(:result_file, result_file)
-         |> assign(:error_message, nil)
-         |> assign(:show_result_modal, false)
-         |> assign(:start_time, DateTime.utc_now())}
+         |> assign(:projects, projects)
+         |> assign(:running_project_id, nil)
+         |> assign(:progress_message, nil)
+         |> put_flash(:info, "Dự án đã hoàn thành!")}
 
-      {:error, reason} ->
-        Logger.error(
-          "[KEYWORD_CANNIBALIZATION] ERROR - User: #{socket.assigns.user_email}, Session: #{socket.assigns.session_id}, Reason: #{reason}"
+      "failed" ->
+        # Reload projects list to get updated status
+        projects = KeywordCannibalizationProjects.list_projects(user_id)
+
+        # Unsubscribe
+        Phoenix.PubSub.unsubscribe(
+          Levanngoc.PubSub,
+          "cannibalization_project:#{project_id}"
         )
 
-        {:noreply, assign(socket, :error_message, reason)}
-    end
-  end
+        # Clear progress from cache
+        Cachex.del(:cache, {:cannibalization_progress, project_id})
 
-  @impl true
-  def handle_event("clear_results", _params, socket) do
-    # Delete file if exists
-    if socket.assigns.result_file && File.exists?(socket.assigns.result_file) do
-      File.rm(socket.assigns.result_file)
-    end
+        {:noreply,
+         socket
+         |> assign(:projects, projects)
+         |> assign(:running_project_id, nil)
+         |> assign(:progress_message, nil)
+         |> put_flash(:error, "Dự án thất bại: #{message}")}
 
-    {:noreply,
-     socket
-     |> assign(:domain_input, "")
-     |> assign(:manual_keywords, "")
-     |> assign(:result_file, nil)
-     |> assign(:error_message, nil)
-     |> assign(:cannibalization_results, [])
-     |> assign(:show_result_modal, false)
-     |> assign(:current_page, 1)}
-  end
+      "running" ->
+        # Optimize: Don't reload projects list for progress updates
+        # Just update the progress message
+        {:noreply, assign(socket, :progress_message, message)}
 
-  @impl true
-  def handle_event("goto_page", %{"page" => page_str}, socket) do
-    page = String.to_integer(page_str)
-    {:noreply, assign(socket, :current_page, page)}
-  end
-
-  @impl true
-  def handle_event("next_page", _params, socket) do
-    results = read_results_from_file(socket.assigns.result_file)
-    total_pages = calculate_total_pages(results, socket.assigns.per_page)
-    current_page = socket.assigns.current_page
-
-    if current_page < total_pages do
-      {:noreply, assign(socket, :current_page, current_page + 1)}
-    else
-      {:noreply, socket}
-    end
-  end
-
-  @impl true
-  def handle_event("prev_page", _params, socket) do
-    current_page = socket.assigns.current_page
-
-    if current_page > 1 do
-      {:noreply, assign(socket, :current_page, current_page - 1)}
-    else
-      {:noreply, socket}
-    end
-  end
-
-  @impl true
-  def handle_info({:start_crawl, domain, result_file}, socket) do
-    normalized_domain = HtmlParser.normalize_domain(domain)
-    base_domain = HtmlParser.get_base_domain(normalized_domain)
-
-    # Initialize empty JSON file
-    write_results_to_file(result_file, [])
-
-    # Step 1: Crawl sitemap
-    case Sitemap.discover(normalized_domain) do
-      {:ok, urls} ->
-        # Limit URLs to prevent overload
-        limited_urls = Enum.take(urls, @max_urls_to_crawl)
-
-        send(self(), {:crawl_urls, limited_urls, base_domain, result_file})
-
+      _ ->
         {:noreply, socket}
-
-      {:error, reason} ->
-        Logger.error(
-          "[KEYWORD_CANNIBALIZATION] SITEMAP_ERROR - User: #{socket.assigns.user_email}, Session: #{socket.assigns.session_id}, Domain: #{domain}, Error: #{inspect(reason)}"
-        )
-
-        {:noreply,
-         socket
-         |> assign(:checking, false)
-         |> assign(:error_message, "Không thể tìm thấy sitemap cho domain này")}
     end
   end
 
-  @impl true
-  def handle_info({:crawl_urls, urls, base_domain, result_file}, socket) do
-    # Crawl URLs concurrently with 40 workers
-    _results =
-      urls
-      |> Task.async_stream(
-        fn url ->
-          result = crawl_single_url(url, base_domain)
+  # Helper Functions
 
-          # Save to JSON file immediately after each URL is crawled
-          if match?({:ok, _}, result) do
-            {:ok, page_data} = result
-            append_result_to_file(result_file, page_data)
-          end
-
-          result
-        end,
-        max_concurrency: @crawl_concurrency,
-        timeout: 30_000,
-        on_timeout: :kill_task
-      )
-      |> Enum.to_list()
-
-    # Schedule cleanup job for 2 hours later
-    Levanngoc.Jobs.CrawlCleanup.schedule_cleanup(result_file)
-
-    # Parse keywords and start scraping if keywords exist
-    keywords =
+  # Parse keywords from textarea or uploaded file
+  defp parse_keywords_from_form(socket) do
+    if socket.assigns.is_edit_mode do
+      # Parse from textarea
       socket.assigns.manual_keywords
       |> String.split("\n")
       |> Enum.map(&String.trim/1)
       |> Enum.map(&String.downcase/1)
       |> Enum.reject(&(&1 == ""))
       |> Enum.uniq()
-
-    if length(keywords) > 0 do
-      send(
-        self(),
-        {:scrape_keywords, keywords, socket.assigns.domain_input, socket.assigns.result_limit}
-      )
-
-      {:noreply, socket}
     else
-      {:noreply, assign(socket, :checking, false)}
-    end
-  end
-
-  @impl true
-  def handle_info({:scrape_keywords, keywords, domain, max_results}, socket) do
-    # Get ScrapingDog API key from AdminSetting
-    admin_setting = Repo.all(AdminSetting)
-
-    case admin_setting do
-      [%AdminSetting{scraping_dog_api_key: api_key} | _]
-      when is_binary(api_key) and api_key != "" ->
-        # Initialize ScrapingDog client
-        scraping_dog =
-          %ScrapingDog{}
-          |> ScrapingDog.put_apikey(api_key)
-
-        # Scrape keywords concurrently with 30 workers
-        results =
-          keywords
-          |> Task.async_stream(
-            fn keyword ->
-              try do
-                urls = ScrapingDog.scraping_cannibal(scraping_dog, domain, keyword, max_results)
-                {keyword, {:ok, urls}}
-              rescue
-                e ->
-                  {keyword, {:error, inspect(e)}}
-              end
-            end,
-            max_concurrency: @keyword_scraping_concurrency,
-            timeout: 60_000,
-            on_timeout: :kill_task
-          )
-          |> Enum.to_list()
-
-        # Load crawled data from result_file
-        crawled_data = read_results_from_file(socket.assigns.result_file)
-
-        # Score each keyword based on cannibalization criteria
-        cannibalization_results =
-          results
-          |> Enum.with_index()
-          |> Enum.reduce([], fn
-            {{:ok, {keyword, {:ok, urls}}}, _idx}, acc ->
-              cond do
-                # No URLs found
-                length(urls) == 0 ->
-                  result = %{
-                    keyword: keyword,
-                    score: 0,
-                    urls: [],
-                    details: %{
-                      base_score: 0,
-                      title_h1_similarity: 0.0,
-                      same_page_type: false,
-                      anchor_text_conflicts: 0
-                    },
-                    visualization: %{
-                      percentage: 0.0,
-                      circumference: Float.round(2.0 * 3.14159 * 70.0, 2),
-                      stroke_dashoffset: Float.round(2.0 * 3.14159 * 70.0, 2)
-                    },
-                    status: :no_results
-                  }
-
-                  [result | acc]
-
-                # Only 1 URL found - no cannibalization
-                length(urls) == 1 ->
-                  result = %{
-                    keyword: keyword,
-                    score: 0,
-                    urls: urls,
-                    details: %{
-                      base_score: 0,
-                      title_h1_similarity: 0.0,
-                      same_page_type: false,
-                      anchor_text_conflicts: 0
-                    },
-                    visualization: %{
-                      percentage: 0.0,
-                      circumference: Float.round(2.0 * 3.14159 * 70.0, 2),
-                      stroke_dashoffset: Float.round(2.0 * 3.14159 * 70.0, 2)
-                    },
-                    status: :safe
-                  }
-
-                  [result | acc]
-
-                # 2+ URLs - potential cannibalization
-                true ->
-                  case Scorer.score_keyword(keyword, urls, crawled_data) do
-                    nil ->
-                      # Thay vì bỏ qua, tạo một kết quả no_results
-                      result = %{
-                        keyword: keyword,
-                        score: 0,
-                        urls: urls,
-                        details: %{
-                          base_score: 0,
-                          title_h1_similarity: 0.0,
-                          same_page_type: false,
-                          anchor_text_conflicts: 0
-                        },
-                        visualization: %{
-                          percentage: 0.0,
-                          circumference: Float.round(2.0 * 3.14159 * 70.0, 2),
-                          stroke_dashoffset: Float.round(2.0 * 3.14159 * 70.0, 2)
-                        },
-                        status: :no_results
-                      }
-
-                      [result | acc]
-
-                    score_result ->
-                      result_with_status = Map.put(score_result, :status, :cannibalization)
-                      [result_with_status | acc]
-                  end
-              end
-
-            {{:ok, {keyword, {:error, reason}}}, _idx}, acc ->
-              result = %{
-                keyword: keyword,
-                score: 0,
-                urls: [],
-                details: %{
-                  base_score: 0,
-                  title_h1_similarity: 0.0,
-                  same_page_type: false,
-                  anchor_text_conflicts: 0
-                },
-                visualization: %{
-                  percentage: 0.0,
-                  circumference: Float.round(2.0 * 3.14159 * 70.0, 2),
-                  stroke_dashoffset: Float.round(2.0 * 3.14159 * 70.0, 2)
-                },
-                status: :error,
-                error_message: reason
-              }
-
-              [result | acc]
-
-            {{:exit, reason}, _idx}, acc ->
-              # Add a placeholder result for timeout
-              result = %{
-                keyword: "Unknown (timeout)",
-                score: 0,
-                urls: [],
-                details: %{
-                  base_score: 0,
-                  title_h1_similarity: 0.0,
-                  same_page_type: false,
-                  anchor_text_conflicts: 0
-                },
-                visualization: %{
-                  percentage: 0.0,
-                  circumference: Float.round(2.0 * 3.14159 * 70.0, 2),
-                  stroke_dashoffset: Float.round(2.0 * 3.14159 * 70.0, 2)
-                },
-                status: :error,
-                error_message: "Task timeout: #{inspect(reason)}"
-              }
-
-              [result | acc]
-
-            {_other, _idx}, acc ->
-              acc
-          end)
-          |> Enum.sort_by(& &1.keyword)
-
-        cannibalization_count =
-          Enum.count(cannibalization_results, fn r -> r.status == :cannibalization end)
-
-        # Log end
-        duration = DateTime.diff(DateTime.utc_now(), socket.assigns.start_time, :second)
-
-        Logger.info(
-          "[KEYWORD_CANNIBALIZATION] END - User: #{socket.assigns.user_email}, Domain: #{domain}, Total Keywords: #{length(cannibalization_results)}, Cannibalization Found: #{cannibalization_count}, Duration: #{duration}s, Time: #{DateTime.utc_now()}"
-        )
-
-        {:noreply,
-         socket
-         |> assign(:checking, false)
-         |> assign(:cannibalization_results, cannibalization_results)
-         |> assign(:show_result_modal, true)
-         |> assign(:selected_keyword_index, 0)}
-
-      _ ->
-        Logger.error(
-          "[KEYWORD_CANNIBALIZATION] API_KEY_ERROR - User: #{socket.assigns.user_email}, Session: #{socket.assigns.session_id}, Error: ScrapingDog API key not configured"
-        )
-
-        {:noreply, assign(socket, :checking, false)}
-    end
-  end
-
-  defp validate_inputs(domain, _keywords) do
-    if domain == "" do
-      {:error, "Vui lòng nhập domain"}
-    else
-      :ok
-    end
-  end
-
-  defp crawl_single_url(url, base_domain) do
-    case HtmlParser.fetch_and_parse(url, base_domain: base_domain) do
-      {:ok, page_data} ->
-        # Limit internal links to save memory
-        limited_page_data = limit_internal_links(page_data)
-        {:ok, limited_page_data}
-
-      {:error, reason} ->
-        {:error, reason}
-    end
-  end
-
-  defp limit_internal_links(%PageData{internal_links: links} = page_data)
-       when length(links) > @max_internal_links do
-    limited_links = Enum.take(links, @max_internal_links)
-    %{page_data | internal_links: limited_links}
-  end
-
-  defp limit_internal_links(page_data), do: page_data
-
-  defp calculate_total_pages([], _per_page), do: 1
-
-  defp calculate_total_pages(results, per_page) do
-    ceil(length(results) / per_page)
-  end
-
-  defp paginate_results(results, page, per_page) do
-    start_index = (page - 1) * per_page
-    Enum.slice(results, start_index, per_page)
-  end
-
-  defp generate_result_file_path(domain) do
-    timestamp = System.system_time(:second)
-    sanitized_domain = String.replace(domain, ~r/[^a-zA-Z0-9-]/, "_")
-    filename = "crawl_#{sanitized_domain}_#{timestamp}.json"
-    Path.join(@results_dir, filename)
-  end
-
-  defp write_results_to_file(file_path, results) do
-    File.mkdir_p!(Path.dirname(file_path))
-
-    json_data = Jason.encode!(results)
-    File.write!(file_path, json_data)
-  end
-
-  defp append_result_to_file(file_path, page_data) do
-    # Read current results
-    current_results = read_results_from_file(file_path)
-
-    # Convert PageData struct to map for JSON encoding
-    page_map = %{
-      url: page_data.url,
-      title: page_data.title,
-      h1: page_data.h1,
-      description: page_data.description,
-      canonical_url: page_data.canonical_url,
-      internal_links:
-        Enum.map(page_data.internal_links, fn link ->
-          %{
-            target_url: link.target_url,
-            anchor_text: link.anchor_text
-          }
+      # Parse from uploaded file
+      uploaded_files =
+        consume_uploaded_entries(socket, :file, fn %{path: path}, entry ->
+          parse_keywords_file(path, entry.client_type)
         end)
-    }
 
-    # Append new result
-    updated_results = current_results ++ [page_map]
-
-    # Write back to file
-    write_results_to_file(file_path, updated_results)
+      uploaded_files
+      |> List.flatten()
+      |> Enum.uniq()
+    end
   end
 
-  defp read_results_from_file(nil), do: []
+  # Parse keywords from uploaded file
+  defp parse_keywords_file(path, "text/csv") do
+    path
+    |> File.stream!()
+    |> NimbleCSV.RFC4180.parse_stream(skip_headers: false)
+    |> Enum.to_list()
+    |> case do
+      [] ->
+        []
 
-  defp read_results_from_file(file_path) do
-    if File.exists?(file_path) do
-      case File.read(file_path) do
-        {:ok, content} ->
-          case Jason.decode(content) do
-            {:ok, results} -> results
-            _ -> []
+      [_header | rows] ->
+        rows
+        |> Enum.map(fn row ->
+          keyword = Enum.at(row, 0)
+          if keyword, do: String.trim(keyword) |> String.downcase(), else: nil
+        end)
+        |> Enum.reject(&(&1 == nil or &1 == ""))
+    end
+  end
+
+  defp parse_keywords_file(path, "text/plain") do
+    # .txt file - one keyword per line
+    File.read!(path)
+    |> String.split("\n")
+    |> Enum.map(&String.trim/1)
+    |> Enum.map(&String.downcase/1)
+    |> Enum.reject(&(&1 == ""))
+  end
+
+  defp parse_keywords_file(path, _type) do
+    # Assume XLSX
+    case Xlsxir.multi_extract(path, 0) do
+      {:ok, table_id} ->
+        data =
+          Xlsxir.get_list(table_id)
+          |> case do
+            [] ->
+              []
+
+            [_header | rows] ->
+              rows
+              |> Enum.map(fn row ->
+                keyword = Enum.at(row, 0)
+
+                if keyword,
+                  do: to_string(keyword) |> String.trim() |> String.downcase(),
+                  else: nil
+              end)
+              |> Enum.reject(&(&1 == nil or &1 == ""))
           end
 
-        _ ->
-          []
-      end
-    else
-      []
+        Xlsxir.close(table_id)
+        data
+
+      _ ->
+        []
     end
   end
 
@@ -601,11 +506,82 @@ defmodule LevanngocWeb.CheckKeywordCannibalizationLive.Index do
   defp get_score_badge_class(score) when score <= 6, do: "badge-error"
   defp get_score_badge_class(_score), do: "badge-error font-bold"
 
+  # Map score to text color class for inline number display
+  defp get_score_text_class(score) when score <= 2, do: "text-success"
+  defp get_score_text_class(score) when score <= 4, do: "text-warning"
+  defp get_score_text_class(score) when score <= 6, do: "text-error"
+  defp get_score_text_class(_score), do: "text-error font-bold"
+
   # Sanitize filename for safe file system operations
   defp sanitize_filename(domain) do
     domain
     |> String.replace(~r/[^a-zA-Z0-9-_]/, "_")
     |> String.slice(0..50)
+  end
+
+  # Helper function for date formatting with Asia/Ho_Chi_Minh timezone
+  defp format_date(nil), do: ""
+
+  defp format_date(datetime) do
+    case datetime do
+      %DateTime{} ->
+        # Convert to Asia/Ho_Chi_Minh timezone
+        local_datetime = DateTime.shift_zone!(datetime, "Asia/Ho_Chi_Minh")
+
+        "#{local_datetime.year}-#{pad_zero(local_datetime.month)}-#{pad_zero(local_datetime.day)} #{pad_zero(local_datetime.hour)}:#{pad_zero(local_datetime.minute)}"
+
+      %NaiveDateTime{} ->
+        # Assume UTC and convert to Asia/Ho_Chi_Minh timezone
+        datetime
+        |> DateTime.from_naive!("Etc/UTC")
+        |> DateTime.shift_zone!("Asia/Ho_Chi_Minh")
+        |> then(fn dt ->
+          "#{dt.year}-#{pad_zero(dt.month)}-#{pad_zero(dt.day)} #{pad_zero(dt.hour)}:#{pad_zero(dt.minute)}"
+        end)
+
+      _ ->
+        ""
+    end
+  end
+
+  defp pad_zero(num) when num < 10, do: "0#{num}"
+  defp pad_zero(num), do: "#{num}"
+
+  # Convert string keys from database JSON to atom keys for template
+  defp atomize_result(result) when is_map(result) do
+    %{
+      keyword: result["keyword"],
+      score: result["score"],
+      urls: result["urls"] || [],
+      status:
+        case result["status"] do
+          "no_results" -> :no_results
+          "safe" -> :safe
+          "error" -> :error
+          "cannibalization" -> :cannibalization
+          _ -> :needs_review
+        end,
+      details: %{
+        base_score: result["details"]["base_score"],
+        title_h1_similarity: result["details"]["title_h1_similarity"],
+        same_page_type: result["details"]["same_page_type"],
+        anchor_text_conflicts: result["details"]["anchor_text_conflicts"]
+      },
+      visualization: %{
+        percentage: result["visualization"]["percentage"],
+        circumference: result["visualization"]["circumference"],
+        stroke_dashoffset: result["visualization"]["stroke_dashoffset"]
+      }
+    }
+    |> maybe_add_error_message(result)
+  end
+
+  defp maybe_add_error_message(atomized_result, result) do
+    if result["error_message"] do
+      Map.put(atomized_result, :error_message, result["error_message"])
+    else
+      atomized_result
+    end
   end
 
   # Generate XLSX file from cannibalization results
