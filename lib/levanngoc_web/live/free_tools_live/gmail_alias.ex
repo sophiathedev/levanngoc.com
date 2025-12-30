@@ -9,7 +9,8 @@ defmodule LevanngocWeb.FreeToolsLive.GmailAlias do
      |> assign(:gmail_address, "")
      |> assign(:num_aliases, "100")
      |> assign(:alias_method, "plus")
-     |> assign(:generated_aliases, "")}
+     |> assign(:generated_aliases, "")
+     |> LevanngocWeb.TrackToolVisit.track_visit("/gmail-alias")}
   end
 
   @impl true

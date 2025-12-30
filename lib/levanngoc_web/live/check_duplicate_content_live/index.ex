@@ -23,7 +23,8 @@ defmodule LevanngocWeb.CheckDuplicateContentLive.Index do
      |> assign(:start_time, nil)
      |> assign(:show_result_modal, false)
      |> assign(:post_title, "")
-     |> assign(:content_input, "")}
+     |> assign(:content_input, "")
+     |> LevanngocWeb.TrackToolVisit.track_visit("/check-duplicate-content")}
   end
 
   @impl true

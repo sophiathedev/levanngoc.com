@@ -32,7 +32,8 @@ defmodule LevanngocWeb.KeywordGroupingLive.Index do
      |> assign(:keywords_input, "")
      |> assign(:original_keyword_order, [])
      |> assign(:is_exporting_sheets, false)
-     |> assign(:exported_sheets_url, nil)}
+     |> assign(:exported_sheets_url, nil)
+     |> LevanngocWeb.TrackToolVisit.track_visit("/keyword-grouping")}
   end
 
   @impl true

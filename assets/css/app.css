@@ -141,3 +141,22 @@
     @apply !text-primary;
   }
 }
+
+/* Google Sans font family */
+body, html {
+  font-family: "Google Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-style: normal;
+}
+
+/* Geist Mono for code elements */
+pre, code,
+input.font-mono,
+textarea.font-mono,
+input[type="text"].code,
+textarea.code,
+.font-mono {
+  font-family: "Geist Mono", monospace;
+  font-optical-sizing: auto;
+  font-style: normal;
+}

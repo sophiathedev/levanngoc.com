@@ -38,7 +38,8 @@ defmodule LevanngocWeb.CheckUrlIndexLive.Index do
      |> assign(:result_stats, nil)
      |> assign(:is_edit_mode, true)
      |> assign(:manual_urls, "")
-     |> allow_upload(:file, accept: ~w(.xlsx .csv), max_entries: 1, max_file_size: 32_000_000)}
+     |> allow_upload(:file, accept: ~w(.xlsx .csv), max_entries: 1, max_file_size: 32_000_000)
+     |> LevanngocWeb.TrackToolVisit.track_visit("/check-url-index")}
   end
 
   @impl true

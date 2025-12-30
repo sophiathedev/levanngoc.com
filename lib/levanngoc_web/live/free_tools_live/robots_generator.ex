@@ -30,7 +30,8 @@ defmodule LevanngocWeb.FreeToolsLive.RobotsGenerator do
      |> assign(:sitemap, "")
      |> assign(:restricted_directories, "")
      |> assign(:search_robots, Map.new(robots_list, fn r -> {r, "Same as Default"} end))
-     |> assign(:generated_content, nil)}
+     |> assign(:generated_content, nil)
+     |> LevanngocWeb.TrackToolVisit.track_visit("/robots-generator")}
   end
 
   @impl true

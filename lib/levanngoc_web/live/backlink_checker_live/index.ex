@@ -14,7 +14,8 @@ defmodule LevanngocWeb.BacklinkCheckerLive.Index do
      |> assign(:max_anchor_count, 0)
      |> assign(:is_exporting_sheets, false)
      |> assign(:exported_sheets_url, nil)
-     |> assign(:is_processing, false)}
+     |> assign(:is_processing, false)
+     |> LevanngocWeb.TrackToolVisit.track_visit("/backlink-checker")}
   end
 
   @impl true

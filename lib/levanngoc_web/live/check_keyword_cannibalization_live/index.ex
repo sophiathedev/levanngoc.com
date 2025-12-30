@@ -57,7 +57,8 @@ defmodule LevanngocWeb.CheckKeywordCannibalizationLive.Index do
        accept: ~w(.xlsx .csv .txt),
        max_entries: 1,
        max_file_size: 32_000_000
-     )}
+     )
+     |> LevanngocWeb.TrackToolVisit.track_visit("/check-keyword-cannibalization")}
   end
 
   # Modal Management Event Handlers

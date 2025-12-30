@@ -90,7 +90,8 @@ defmodule LevanngocWeb.CheckKeywordRankingLive.Index do
      |> assign(:is_email_mode, false)
      |> assign(:has_scheduled_job, has_scheduled_job)
      |> assign(:is_exporting_sheets, false)
-     |> assign(:exported_sheets_urls, %{})}
+     |> assign(:exported_sheets_urls, %{})
+     |> LevanngocWeb.TrackToolVisit.track_visit("/check-keyword-ranking")}
   end
 
   @impl true

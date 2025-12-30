@@ -13,7 +13,8 @@ defmodule LevanngocWeb.FreeToolsLive.RedirectChecker do
      |> assign(:checking, false)
      |> assign(:redirect_chain, [])
      |> assign(:error_message, nil)
-     |> assign(:summary, nil)}
+     |> assign(:summary, nil)
+     |> LevanngocWeb.TrackToolVisit.track_visit("/redirect-checker")}
   end
 
   @impl true

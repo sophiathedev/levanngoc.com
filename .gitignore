@@ -39,3 +39,5 @@ npm-debug.log
 google_application_credentials.json
 .env
 .env.prod
+CLAUDE.md
+

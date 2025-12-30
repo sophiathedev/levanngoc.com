@@ -38,7 +38,8 @@ defmodule LevanngocWeb.CheckAllInTitleLive.Index do
      |> assign(:manual_keywords, "")
      |> assign(:is_exporting_sheets, false)
      |> assign(:exported_sheets_urls, %{})
-     |> allow_upload(:file, accept: ~w(.xlsx .csv), max_entries: 1, max_file_size: 32_000_000)}
+     |> allow_upload(:file, accept: ~w(.xlsx .csv), max_entries: 1, max_file_size: 32_000_000)
+     |> LevanngocWeb.TrackToolVisit.track_visit("/check-all-in-title")}
   end
 
   @impl true

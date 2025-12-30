@@ -13,7 +13,8 @@ defmodule LevanngocWeb.SeoImageLive.ImageCompression do
        auto_upload: true
      )
      |> assign(:compression_mode, "standard")
-     |> assign(:quality, 90)}
+     |> assign(:quality, 90)
+     |> LevanngocWeb.TrackToolVisit.track_visit("/image-compression")}
   end
 
   @impl true

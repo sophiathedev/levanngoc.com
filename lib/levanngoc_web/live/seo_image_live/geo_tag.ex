@@ -35,7 +35,8 @@ defmodule LevanngocWeb.SeoImageLive.GeoTag do
      |> assign(:rate_5_stars, true)
      |> assign(:compress_after_geotag, true)
      |> assign(:image_quality, 90)
-     |> assign(:has_non_jpeg, false)}
+     |> assign(:has_non_jpeg, false)
+     |> LevanngocWeb.TrackToolVisit.track_visit("/geo-tag")}
   end
 
   @impl true
