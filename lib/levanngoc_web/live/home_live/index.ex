@@ -1,6 +1,8 @@
 defmodule LevanngocWeb.HomeLive.Index do
   use LevanngocWeb, :live_view
 
+  import Ecto.Query
+
   # Tools configuration organized by category
   @tools %{
     keyword_research: [
@@ -140,12 +142,28 @@ defmodule LevanngocWeb.HomeLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
+    # Get current subscription for logged-in user
+    current_subscription =
+      case socket.assigns[:current_scope] do
+        %{user: %{id: user_id}} ->
+          Levanngoc.Repo.one(
+            from bh in Levanngoc.Billing.BillingHistory,
+              where: bh.user_id == ^user_id and bh.is_current == true,
+              preload: [:billing_price],
+              limit: 1
+          )
+
+        _ ->
+          nil
+      end
+
     {:ok,
      socket
      |> assign(:page_title, "Công cụ SEO miễn phí")
      |> assign(:tools, @tools)
      |> assign(:category_names, @category_names)
      |> assign(:quick_access_tools, @quick_access_tools)
+     |> assign(:current_subscription, current_subscription)
      |> load_recent_tools()}
   end
 
@@ -165,6 +183,17 @@ defmodule LevanngocWeb.HomeLive.Index do
     <% end %>
     """
   end
+
+  # Helper function to format renewal date
+  defp format_renewal_date(%DateTime{} = date) do
+    Calendar.strftime(date, "%d/%m/%Y")
+  end
+
+  defp format_renewal_date(%NaiveDateTime{} = date) do
+    Calendar.strftime(date, "%d/%m/%Y")
+  end
+
+  defp format_renewal_date(_), do: "Liên hệ hỗ trợ"
 
   # Helper function to load recent tools from cache
   defp load_recent_tools(socket) do
@@ -209,10 +238,10 @@ defmodule LevanngocWeb.HomeLive.Index do
       </div>
       
     <!-- Stats Cards -->
-      <div class="w-full mb-12">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
         <!-- Token Balance -->
-        <div class="card bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 w-full">
-          <div class="card-body">
+        <div class="card bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
+          <div class="card-body flex justify-center">
             <div class="flex items-center gap-3">
               <div class="p-3 bg-primary/20 rounded-lg">
                 <.icon name="hero-wallet" class="size-6 text-primary" />
@@ -222,8 +251,34 @@ defmodule LevanngocWeb.HomeLive.Index do
                 <p class="text-2xl font-bold text-primary">
                   {(@current_scope.user.token_amount || 0)
                   |> trunc()
-                  |> Number.Delimit.number_to_delimited()}
+                  |> Number.Delimit.number_to_delimited(precision: 0)}
                 </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+    <!-- Subscription Plan -->
+        <div class="card bg-base-200 border border-base-300">
+          <div class="card-body flex items-center">
+            <div class="flex items-center gap-3 w-full">
+              <div class="p-3 bg-info/20 rounded-lg">
+                <.icon name="hero-credit-card" class="size-6 text-info" />
+              </div>
+              <div class="flex-1">
+                <p class="text-sm text-base-content/60">Gói đang sử dụng</p>
+                <p class="text-lg font-semibold text-base-content">
+                  <%= if @current_subscription && @current_subscription.billing_price do %>
+                    {@current_subscription.billing_price.name}
+                  <% else %>
+                    Gói miễn phí
+                  <% end %>
+                </p>
+                <%= if @current_subscription && @current_subscription.next_subscription_at do %>
+                  <p class="text-xs text-base-content/50 mt-1">
+                    Gia hạn: {format_renewal_date(@current_subscription.next_subscription_at)}
+                  </p>
+                <% end %>
               </div>
             </div>
           </div>
